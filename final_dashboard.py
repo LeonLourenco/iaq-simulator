@@ -190,9 +190,10 @@ with st.sidebar:
     with col_start:
         if st.button("▶️ Iniciar", type="primary", disabled=st.session_state.simulation_running):
             initialize_simulation()
-            st.session_state.simulation_running = True
-            st.session_state.simulation_paused = False
-            st.rerun()
+            if st.session_state.simulation_model is not None:
+                st.session_state.simulation_running = True
+                st.session_state.simulation_paused = False
+                st.rerun()
     
     with col_pause:
         pause_label = "Retomar" if st.session_state.simulation_paused else "Pausar"
@@ -237,10 +238,8 @@ with st.sidebar:
 if st.session_state.simulation_running and not st.session_state.simulation_paused:
     model = st.session_state.simulation_model
     
-    # Avançar a simulação (loop manual para controle via Streamlit)
-    if model.running:
+    if model is not None and model.running:
         # Executa passos até cobrir o time_step visual escolhido
-        # O modelo tem seu próprio dt interno, avançamos o tempo total
         target_time = model.time + st.session_state.dt_seconds
         
         while model.time < target_time and model.running:
@@ -260,6 +259,10 @@ if st.session_state.simulation_running and not st.session_state.simulation_pause
         
         # Forçar atualização da interface
         st.rerun()
+    elif model is None:
+        # Se o modelo sumiu, reseta o estado
+        st.session_state.simulation_running = False
+        st.error("Erro: O modelo de simulação foi perdido. Por favor, reinicie.")
     else:
         st.session_state.simulation_running = False
         st.success("Simulação Finalizada!")
