@@ -33,7 +33,6 @@ class HumanAgent(Agent):
         # Estado de saúde
         self.infected = initial_infected
         
-        # --- CORREÇÃO: Definir tempo de início para infectados iniciais ---
         if self.infected:
             # Assume que a infecção começou entre 0 e 5 dias atrás
             # Isso cria variabilidade na carga viral inicial
@@ -41,7 +40,7 @@ class HumanAgent(Agent):
             self.infection_start_time = -days_infected * 86400
             
             # Define carga viral inicial baseada no tempo
-            # Simplificação: usa a lógica de evolução para definir carga atual
+            # Usa a lógica de evolução para definir carga atual
             peak_time = 4 * 86400 # pico médio
             duration = 12 * 86400 # duração média
             infection_duration = -self.infection_start_time
@@ -56,7 +55,6 @@ class HumanAgent(Agent):
         else:
             self.infection_start_time = None
             self.viral_load = 0.0
-        # ------------------------------------------------------------------
 
         self.symptoms = False
         if self.infected:
@@ -998,7 +996,6 @@ class HumanAgent(Agent):
         if hasattr(self.model, 'add_agent_emissions'):
             self.model.add_agent_emissions(emissions)
         elif hasattr(self.model, 'physics'):
-            # Alternativa: enviar diretamente para a física
             for emission in emissions:
                 if emission['species'] in ['heat', 'moisture']:
                     # Para calor e umidade, precisamos de tratamento especial
@@ -1063,7 +1060,6 @@ class AdaptiveScheduler(RandomActivation):
     
     def step(self) -> None:
         """Executa um passo para todos os agentes, com priorização."""
-        # --- CORREÇÃO: Compatibilidade com Mesa 3.0+ ---
         # self.agents é um AgentSet (iterável), converte para lista para permitir ordenação
         agents = list(self.agents)
         
