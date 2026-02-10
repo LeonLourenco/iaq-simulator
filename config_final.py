@@ -181,7 +181,6 @@ class BuildingScenario:
     # Dimensões
     total_width: float  # m
     total_height: float  # m
-    floor_height: float = 2.7  # m
     
     # Zonas
     zones: List[ZoneConfig]
@@ -191,6 +190,8 @@ class BuildingScenario:
     agent_config: AgentConfig
     total_occupants: int
     initial_infected_ratio: float = 0.05
+    
+    floor_height: float = 2.7  # m
     
     # Ventilação
     overall_ventilation_strategy: str = "demand_controlled"
