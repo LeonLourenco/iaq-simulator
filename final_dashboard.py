@@ -62,7 +62,8 @@ def init_session_state():
         'simulation_history': [],
         'active_interventions': [],
         'current_step': 0,
-        'total_steps': 0
+        'total_steps': 0,
+        'dt_seconds': 60 # Valor padrão seguro
     }
     
     for key, value in default_state.items():
@@ -134,7 +135,7 @@ with st.sidebar:
     
     col_start, col_pause, col_reset = st.columns(3)
     
-    # Função de inicialização
+    # Função de inicialização com retorno de status
     def initialize_simulation():
         try:
             # 1. Obter cenário base
@@ -177,20 +178,22 @@ with st.sidebar:
             )
             
             # Resetar contadores
-            st.session_state.dt_seconds = time_step # Armazena o DT escolhido para o loop
+            st.session_state.dt_seconds = time_step
             st.session_state.total_steps = int(simulation_hours * 3600 / time_step)
             st.session_state.current_step = 0
             st.session_state.simulation_data = []
             st.session_state.simulation_history = []
             st.session_state.active_interventions = []
             
+            return True # Sucesso
+            
         except Exception as e:
             st.error(f"Erro na inicialização: {e}")
+            return False # Falha
 
     with col_start:
         if st.button("▶️ Iniciar", type="primary", disabled=st.session_state.simulation_running):
-            initialize_simulation()
-            if st.session_state.simulation_model is not None:
+            if initialize_simulation():
                 st.session_state.simulation_running = True
                 st.session_state.simulation_paused = False
                 st.rerun()
@@ -209,12 +212,11 @@ with st.sidebar:
             st.session_state.simulation_data = []
             st.rerun()
 
-    # Intervenções Dinâmicas (Filtradas para o que o modelo suporta)
-    if st.session_state.simulation_running:
+    # Intervenções Dinâmicas
+    if st.session_state.simulation_running and st.session_state.simulation_model:
         st.markdown("---")
         st.markdown("### 🛡️ Intervenções")
         
-        # Opções mapeadas para o main_model.py
         intervention_map = {
             "Aumentar Ventilação (50%)": ("increase_ventilation", {"factor": 1.5}),
             "Máscaras Obrigatórias": ("mask_mandate", {"compliance": 0.95}),
@@ -239,36 +241,39 @@ if st.session_state.simulation_running and not st.session_state.simulation_pause
     model = st.session_state.simulation_model
     
     if model is not None and model.running:
-        # Executa passos até cobrir o time_step visual escolhido
-        target_time = model.time + st.session_state.dt_seconds
-        
-        while model.time < target_time and model.running:
-            model.step()
+        try:
+            target_time = model.time + st.session_state.dt_seconds
             
-        st.session_state.current_step += 1
-        
-        # Coletar dados para visualização
-        viz_data = model.get_visualization_data()
-        st.session_state.simulation_data.append(viz_data)
-        
-        # Histórico leve para gráficos
-        st.session_state.simulation_history.append({
-            'time': model.time,
-            'metrics': model.current_metrics
-        })
-        
-        # Forçar atualização da interface
-        st.rerun()
+            while model.time < target_time and model.running:
+                model.step()
+                
+            st.session_state.current_step += 1
+            
+            # Coletar dados
+            viz_data = model.get_visualization_data()
+            st.session_state.simulation_data.append(viz_data)
+            
+            # Histórico leve
+            st.session_state.simulation_history.append({
+                'time': model.time,
+                'metrics': model.current_metrics
+            })
+            
+            # Forçar atualização
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"Erro durante a execução: {e}")
+            st.session_state.simulation_paused = True # Pausa para ver o erro
     elif model is None:
-        # Se o modelo sumiu, reseta o estado
         st.session_state.simulation_running = False
-        st.error("Erro: O modelo de simulação foi perdido. Por favor, reinicie.")
+        st.error("Modelo perdido. Reinicie a simulação.")
     else:
         st.session_state.simulation_running = False
         st.success("Simulação Finalizada!")
 
 # Dashboard de Visualização
-if st.session_state.simulation_model:
+if st.session_state.simulation_model is not None:
     model = st.session_state.simulation_model
     
     # Barra de Progresso
@@ -297,8 +302,10 @@ if st.session_state.simulation_model:
         
     with kpi3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+        # Proteção para caso a lista de agentes tenha mudado de nome internamente
+        agent_count = len(model.simulation_agents) if hasattr(model, 'simulation_agents') else len(model.agents)
         inf_agents = metrics.get('infected_agents', 0)
-        st.metric("Agentes Infectados", f"{inf_agents}", f"Total: {len(model.agents)}")
+        st.metric("Agentes Infectados", f"{inf_agents}", f"Total: {agent_count}")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with kpi4:
@@ -332,9 +339,12 @@ if st.session_state.simulation_model:
             fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['infection_risk'], name="Risco", line=dict(color='red')), row=1, col=2)
             # HCHO
             fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['average_hcho'], name="HCHO", line=dict(color='purple')), row=2, col=1)
-            # Temp/Hum
-            fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['average_temperature'], name="Temp (°C)"), row=2, col=2)
-            fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['average_humidity']*100, name="Umid (%)", line=dict(dash='dot')), row=2, col=2)
+            
+            # Temp/Hum - Com proteção caso as chaves não existam
+            if 'average_temperature' in df_hist.columns:
+                fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['average_temperature'], name="Temp (°C)"), row=2, col=2)
+            if 'average_humidity' in df_hist.columns:
+                fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['average_humidity']*100, name="Umid (%)", line=dict(dash='dot')), row=2, col=2)
             
             fig.update_layout(height=600, showlegend=True)
             st.plotly_chart(fig, use_container_width=True)
@@ -363,18 +373,18 @@ if st.session_state.simulation_model:
                     pos = np.array(agents['positions'])
                     inf = np.array(agents['infected'])
                     
-                    # Plotar agentes (vermelho = infectado, verde = saudável)
-                    fig_map.add_trace(go.Scatter(
-                        x=pos[:, 0], 
-                        y=pos[:, 1],
-                        mode='markers',
-                        marker=dict(
-                            color=['red' if i else '#00FF00' for i in inf],
-                            size=8,
-                            line=dict(width=1, color='black')
-                        ),
-                        name='Ocupantes'
-                    ))
+                    if len(pos) > 0:
+                        fig_map.add_trace(go.Scatter(
+                            x=pos[:, 0], 
+                            y=pos[:, 1],
+                            mode='markers',
+                            marker=dict(
+                                color=['red' if i else '#00FF00' for i in inf],
+                                size=8,
+                                line=dict(width=1, color='black')
+                            ),
+                            name='Ocupantes'
+                        ))
                 
                 fig_map.update_layout(
                     title="Mapa de Concentração de CO₂ e Ocupantes",
