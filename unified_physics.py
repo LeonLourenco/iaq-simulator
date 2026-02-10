@@ -958,9 +958,11 @@ class UnifiedPhysicsEngine:
         
         # Perda de umidade por ventilação já aplicada
         # Condensação em superfícies frias
-        surface_cells = self._get_surface_cells()
+        # Desempacota tupla de arrays antes de iterar
+        y_indices, x_indices = self._get_surface_cells()
         
-        for y, x in surface_cells:
+        # Usa zip para iterar sobre pares de coordenadas
+        for y, x in zip(y_indices, x_indices):
             temp = self.grids['temperature'][y, x] - 273.15  # °C
             humidity = self.grids['humidity'][y, x]
             
