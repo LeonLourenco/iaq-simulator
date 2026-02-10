@@ -24,6 +24,8 @@ class UnifiedPhysicsEngine:
     def __init__(self, scenario: cfg.BuildingScenario, physics_config: cfg.PhysicsConfig):
         self.scenario = scenario
         self.config = physics_config
+        
+        # Condições externas (padrão) - Definidas ANTES de usar em _initialize_grids
         self.external_temperature = 20.0 + 273.15  # K
         self.external_humidity = 0.6  # 60%
         self.external_co2 = 400 * cfg.CONVERSION_FACTORS['co2_ppm_to_kgm3']
@@ -174,9 +176,7 @@ class UnifiedPhysicsEngine:
                     )
                     
                     material_grid['emission_rate_hcho'][zone_cells] = (
-                        material_props.hcho_emission_rate * 
-                        age_factor * 
-                        temp_factor *
+                        material_props.hcho_emission_rate * age_factor * temp_factor *
                         humidity_factor *
                         material_props.surface_factor *
                         surface_area
@@ -1023,12 +1023,34 @@ class UnifiedPhysicsEngine:
         # 2. Aplica fontes dos agentes (se fornecidas)
         if agent_data and 'emissions' in agent_data:
             for emission in agent_data['emissions']:
+                # Detecta formato dos dados (granular ou agregado) e normaliza
+                if 'amounts' in emission:
+                    # Formato agregado
+                    amounts = emission['amounts']
+                    heat = emission.get('metabolic_heat', 0.0)
+                    moisture = emission.get('moisture_production', 0.0)
+                else:
+                    # Formato granular (flat) vindo de advanced_agents.py
+                    amounts = {}
+                    heat = 0.0
+                    moisture = 0.0
+                    
+                    sp = emission.get('species')
+                    val = emission.get('amount', 0.0)
+                    
+                    if sp == 'heat':
+                        heat = val
+                    elif sp == 'moisture':
+                        moisture = val
+                    elif sp:
+                        amounts[sp] = val
+                        
                 self.add_agent_emission(
                     emission['x'], 
                     emission['y'], 
-                    emission['amounts'],
-                    emission.get('metabolic_heat', 0.0),
-                    emission.get('moisture_production', 0.0)
+                    amounts,
+                    heat,
+                    moisture
                 )
         
         # 3. Advecção
@@ -1313,9 +1335,7 @@ class UnifiedPhysicsEngine:
             'total_volume_m3': total_volume,
             'energy_intensity_w_m2': energy_data['total_power_w'] / max(total_area, 0.1),
             'ventilation_intensity_lps_m2': sum(
-                self.kalman_filters.get(i, {}).get('ach_estimate', zone.target_ach) * 
-                (zone.area_m2 if hasattr(zone, 'area_m2') else 0) * 
-                self.scenario.floor_height / 3.6
+                self.kalman_filters.get(i, {}).get('ach_estimate', zone.target_ach) * (zone.area_m2 if hasattr(zone, 'area_m2') else 0) * self.scenario.floor_height / 3.6
                 for i, zone in enumerate(self.scenario.zones)
             ) / max(total_area, 0.1)
         })
