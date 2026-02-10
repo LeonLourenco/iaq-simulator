@@ -63,7 +63,7 @@ def init_session_state():
         'active_interventions': [],
         'current_step': 0,
         'total_steps': 0,
-        'dt_seconds': 60 # Valor padrão seguro
+        'dt_seconds': 60
     }
     
     for key, value in default_state.items():
@@ -135,7 +135,6 @@ with st.sidebar:
     
     col_start, col_pause, col_reset = st.columns(3)
     
-    # Função de inicialização com retorno de status
     def initialize_simulation():
         try:
             # 1. Obter cenário base
@@ -185,11 +184,11 @@ with st.sidebar:
             st.session_state.simulation_history = []
             st.session_state.active_interventions = []
             
-            return True # Sucesso
+            return True
             
         except Exception as e:
             st.error(f"Erro na inicialização: {e}")
-            return False # Falha
+            return False
 
     with col_start:
         if st.button("▶️ Iniciar", type="primary", disabled=st.session_state.simulation_running):
@@ -212,7 +211,6 @@ with st.sidebar:
             st.session_state.simulation_data = []
             st.rerun()
 
-    # Intervenções Dinâmicas
     if st.session_state.simulation_running and st.session_state.simulation_model:
         st.markdown("---")
         st.markdown("### 🛡️ Intervenções")
@@ -234,45 +232,8 @@ with st.sidebar:
             })
             st.success(f"{sel_intervention} aplicada!")
 
-# --- ÁREA PRINCIPAL ---
+# --- PARTE 1: VISUALIZAÇÃO (MOSTRAR DADOS PRIMEIRO) ---
 
-# Loop de Execução
-if st.session_state.simulation_running and not st.session_state.simulation_paused:
-    model = st.session_state.simulation_model
-    
-    if model is not None and model.running:
-        try:
-            target_time = model.time + st.session_state.dt_seconds
-            
-            while model.time < target_time and model.running:
-                model.step()
-                
-            st.session_state.current_step += 1
-            
-            # Coletar dados
-            viz_data = model.get_visualization_data()
-            st.session_state.simulation_data.append(viz_data)
-            
-            # Histórico leve
-            st.session_state.simulation_history.append({
-                'time': model.time,
-                'metrics': model.current_metrics
-            })
-            
-            # Forçar atualização
-            st.rerun()
-            
-        except Exception as e:
-            st.error(f"Erro durante a execução: {e}")
-            st.session_state.simulation_paused = True # Pausa para ver o erro
-    elif model is None:
-        st.session_state.simulation_running = False
-        st.error("Modelo perdido. Reinicie a simulação.")
-    else:
-        st.session_state.simulation_running = False
-        st.success("Simulação Finalizada!")
-
-# Dashboard de Visualização
 if st.session_state.simulation_model is not None:
     model = st.session_state.simulation_model
     
@@ -302,10 +263,10 @@ if st.session_state.simulation_model is not None:
         
     with kpi3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        # Proteção para caso a lista de agentes tenha mudado de nome internamente
-        agent_count = len(model.simulation_agents) if hasattr(model, 'simulation_agents') else len(model.agents)
+        # Tenta pegar lista de agentes de forma segura
+        total_agents = len(model.simulation_agents) if hasattr(model, 'simulation_agents') else 0
         inf_agents = metrics.get('infected_agents', 0)
-        st.metric("Agentes Infectados", f"{inf_agents}", f"Total: {agent_count}")
+        st.metric("Agentes Infectados", f"{inf_agents}", f"Total: {total_agents}")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with kpi4:
@@ -340,7 +301,7 @@ if st.session_state.simulation_model is not None:
             # HCHO
             fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['average_hcho'], name="HCHO", line=dict(color='purple')), row=2, col=1)
             
-            # Temp/Hum - Com proteção caso as chaves não existam
+            # Temp/Hum (com verificação de chave para evitar erro)
             if 'average_temperature' in df_hist.columns:
                 fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['average_temperature'], name="Temp (°C)"), row=2, col=2)
             if 'average_humidity' in df_hist.columns:
@@ -349,7 +310,7 @@ if st.session_state.simulation_model is not None:
             fig.update_layout(height=600, showlegend=True)
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("Aguardando dados da simulação...")
+            st.info("Iniciando coleta de dados...")
 
     # --- ABA 2: MAPA DE CALOR ---
     with tab_map:
@@ -395,7 +356,7 @@ if st.session_state.simulation_model is not None:
                 
                 st.caption("Nota: Cores dos pontos indicam saúde (Verde=Saudável, Vermelho=Infectado). Fundo indica CO₂.")
             else:
-                st.warning("Dados de grid não disponíveis.")
+                st.warning("Dados de grid ainda não gerados.")
 
     # --- ABA 3: ZONAS ---
     with tab_zones:
@@ -404,7 +365,6 @@ if st.session_state.simulation_model is not None:
             zone_stats = last_frame.get('physics', {}).get('zone_stats', {})
             
             if zone_stats:
-                # Criar DataFrame para tabela
                 zone_rows = []
                 for zid, data in zone_stats.items():
                     concs = data.get('concentrations', {})
@@ -418,10 +378,8 @@ if st.session_state.simulation_model is not None:
                 
                 st.dataframe(pd.DataFrame(zone_rows), use_container_width=True)
                 
-                # Gráfico comparativo de zonas
                 zones = [z['Zona'] for z in zone_rows]
                 co2_vals = [float(z['CO₂ (ppm)']) for z in zone_rows]
-                
                 fig_bar = go.Figure([go.Bar(x=zones, y=co2_vals, marker_color='orange')])
                 fig_bar.update_layout(title="Comparativo de CO₂ por Zona", yaxis_title="ppm")
                 st.plotly_chart(fig_bar, use_container_width=True)
@@ -429,7 +387,6 @@ if st.session_state.simulation_model is not None:
     # --- ABA 4: EXPORTAR ---
     with tab_export:
         st.markdown("### 📥 Download dos Dados")
-        
         col_json, col_csv = st.columns(2)
         
         with col_json:
@@ -445,16 +402,13 @@ if st.session_state.simulation_model is not None:
         with col_csv:
             if st.button("Gerar CSV Histórico"):
                 if st.session_state.simulation_history:
-                    # Flatten metrics
                     flat_data = []
                     for h in st.session_state.simulation_history:
                         row = {'time_seconds': h['time']}
                         row.update(h['metrics'])
                         flat_data.append(row)
-                    
                     csv_df = pd.DataFrame(flat_data)
                     csv_str = csv_df.to_csv(index=False)
-                    
                     st.download_button(
                         label="⬇️ Baixar CSV",
                         data=csv_str,
@@ -464,7 +418,7 @@ if st.session_state.simulation_model is not None:
                 else:
                     st.warning("Sem histórico para exportar.")
 
-else:
+elif not st.session_state.simulation_running:
     # Tela Inicial (Placeholder)
     st.info("👈 Configure o cenário na barra lateral e clique em 'Iniciar' para começar.")
     
@@ -478,3 +432,40 @@ else:
     * **Agentes:** Ocupantes que respiram, se movem e podem transmitir infecções.
     * **Intervenções:** Teste o impacto de máscaras, ventilação e redução de ocupação em tempo real.
     """)
+
+# --- PARTE 2: LÓGICA DE EXECUÇÃO (RODAR NO FINAL) ---
+
+if st.session_state.simulation_running and not st.session_state.simulation_paused:
+    model = st.session_state.simulation_model
+    
+    if model is not None and model.running:
+        try:
+            # Executa a simulação
+            target_time = model.time + st.session_state.dt_seconds
+            
+            while model.time < target_time and model.running:
+                model.step()
+                
+            st.session_state.current_step += 1
+            
+            # Coleta dados APÓS o passo
+            viz_data = model.get_visualization_data()
+            st.session_state.simulation_data.append(viz_data)
+            
+            st.session_state.simulation_history.append({
+                'time': model.time,
+                'metrics': model.current_metrics
+            })
+            
+            # Rerun para atualizar a tela (vai voltar pro topo e desenhar os gráficos novos)
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"Erro durante a execução: {e}")
+            st.session_state.simulation_paused = True
+    elif model is None:
+        st.session_state.simulation_running = False
+        st.error("Modelo perdido. Reinicie a simulação.")
+    else:
+        st.session_state.simulation_running = False
+        st.success("Simulação Finalizada!")
