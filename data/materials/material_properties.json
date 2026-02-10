@@ -1,0 +1,92 @@
+{
+  "carpet": {
+    "co2_emission_rate": 0.02,
+    "hcho_emission_rate": 0.05,
+    "voc_emission_rate": 0.1,
+    "thermal_conductivity": 0.05,
+    "thermal_capacity": 1400,
+    "density": 1100,
+    "humidity_absorption": 0.3,
+    "description": "Carpete sintético padrão"
+  },
+  "gypsum_board": {
+    "co2_emission_rate": 0.001,
+    "hcho_emission_rate": 0.01,
+    "voc_emission_rate": 0.02,
+    "thermal_conductivity": 0.17,
+    "thermal_capacity": 1090,
+    "density": 800,
+    "humidity_absorption": 0.15,
+    "description": "Placa de gesso acartonado"
+  },
+  "wood": {
+    "co2_emission_rate": 0.005,
+    "hcho_emission_rate": 0.03,
+    "voc_emission_rate": 0.05,
+    "thermal_conductivity": 0.13,
+    "thermal_capacity": 1300,
+    "density": 600,
+    "humidity_absorption": 0.2,
+    "description": "Madeira maciça"
+  },
+  "glass": {
+    "co2_emission_rate": 0.0,
+    "hcho_emission_rate": 0.0,
+    "voc_emission_rate": 0.0,
+    "thermal_conductivity": 0.96,
+    "thermal_capacity": 840,
+    "density": 2500,
+    "humidity_absorption": 0.0,
+    "description": "Vidro transparente"
+  },
+  "concrete": {
+    "co2_emission_rate": 0.001,
+    "hcho_emission_rate": 0.001,
+    "voc_emission_rate": 0.005,
+    "thermal_conductivity": 1.4,
+    "thermal_capacity": 1000,
+    "density": 2400,
+    "humidity_absorption": 0.05,
+    "description": "Concreto armado"
+  },
+  "tile": {
+    "co2_emission_rate": 0.0,
+    "hcho_emission_rate": 0.0,
+    "voc_emission_rate": 0.0,
+    "thermal_conductivity": 1.3,
+    "thermal_capacity": 840,
+    "density": 2300,
+    "humidity_absorption": 0.02,
+    "description": "Cerâmica esmaltada"
+  },
+  "stainless_steel": {
+    "co2_emission_rate": 0.0,
+    "hcho_emission_rate": 0.0,
+    "voc_emission_rate": 0.0,
+    "thermal_conductivity": 16.0,
+    "thermal_capacity": 500,
+    "density": 7900,
+    "humidity_absorption": 0.0,
+    "description": "Aço inoxidável"
+  },
+  "linoleum": {
+    "co2_emission_rate": 0.01,
+    "hcho_emission_rate": 0.02,
+    "voc_emission_rate": 0.05,
+    "thermal_conductivity": 0.17,
+    "thermal_capacity": 1400,
+    "density": 1200,
+    "humidity_absorption": 0.1,
+    "description": "Piso vinílico"
+  },
+  "paint": {
+    "co2_emission_rate": 0.005,
+    "hcho_emission_rate": 0.04,
+    "voc_emission_rate": 0.15,
+    "thermal_conductivity": 0.3,
+    "thermal_capacity": 1000,
+    "density": 1300,
+    "humidity_absorption": 0.05,
+    "description": "Tinta acrílica parede"
+  }
+}

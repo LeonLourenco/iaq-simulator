@@ -1,0 +1,47 @@
+{
+  "name": "basic_office",
+  "description": "Cenário básico de escritório open space",
+  "building_type": "office",
+  "total_width": 20.0,
+  "total_height": 15.0,
+  "floor_height": 3.0,
+  "total_occupants": 50,
+  "initial_infected_ratio": 0.03,
+  "co2_setpoint": 800,
+  "temperature_setpoint": 22.0,
+  "humidity_setpoint": 50.0,
+  "overall_ventilation_strategy": "demand_controlled",
+  "zones": [
+    {
+      "name": "Área de Trabalho",
+      "type": "workspace",
+      "x": 0,
+      "y": 0,
+      "width": 15,
+      "height": 10,
+      "occupancy_density": 0.7,
+      "target_ach": 4.0,
+      "ventilation_efficiency": 0.8,
+      "materials": ["carpet", "gypsum_board"]
+    },
+    {
+      "name": "Sala de Reuniões",
+      "type": "meeting",
+      "x": 15,
+      "y": 0,
+      "width": 5,
+      "height": 7,
+      "occupancy_density": 1.2,
+      "target_ach": 6.0,
+      "ventilation_efficiency": 0.7,
+      "materials": ["wood", "glass"]
+    }
+  ],
+  "agent_config": {
+    "intelligence_level": "adaptive",
+    "movement_pattern": "social",
+    "mask_wearing_prob": 0.3,
+    "compliance_rate": 0.7,
+    "activity_level": "moderate"
+  }
+}

@@ -1,0 +1,27 @@
+# MANIFEST.in - Arquivos adicionais para distribuição
+
+# Documentação
+include README.md
+include LICENSE
+include requirements.txt
+include pytest.ini
+
+# Dados
+recursive-include data *.json *.csv
+recursive-include data/results README.md
+
+# Documentação
+recursive-include docs *.md *.rst *.txt
+
+# Exemplos
+recursive-include examples *.py
+
+# Testes
+recursive-include tests *.py
+
+# Excluir arquivos desnecessários
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude *.swp
