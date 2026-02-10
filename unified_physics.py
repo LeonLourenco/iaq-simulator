@@ -25,7 +25,7 @@ class UnifiedPhysicsEngine:
         self.scenario = scenario
         self.config = physics_config
         
-        # Condições externas (padrão) - Definidas ANTES de usar em _initialize_grids
+        # Condições externas (padrão)
         self.external_temperature = 20.0 + 273.15  # K
         self.external_humidity = 0.6  # 60%
         self.external_co2 = 400 * cfg.CONVERSION_FACTORS['co2_ppm_to_kgm3']
@@ -501,6 +501,12 @@ class UnifiedPhysicsEngine:
                 self.heat_gains[zone_idx]['occupants'] += metabolic_heat
                 self.heat_gains[zone_idx]['total'] += metabolic_heat
     
+    def apply_agent_sources(self):
+        """Aplica as fontes acumuladas aos grids de concentração."""
+        for species in ['co2', 'virus', 'hcho', 'voc', 'pm25', 'pm10']:
+            if species in self.sources and species in self.grids:
+                self.grids[species] += self.sources[species]
+    
     def apply_material_emissions(self, dt: float):
         """Aplica emissões de materiais de construção."""
         cell_volume = self.config.cell_size ** 2 * self.scenario.floor_height
@@ -958,7 +964,6 @@ class UnifiedPhysicsEngine:
         
         # Perda de umidade por ventilação já aplicada
         # Condensação em superfícies frias
-        # Desempacota tupla de arrays antes de iterar
         y_indices, x_indices = self._get_surface_cells()
         
         # Usa zip para iterar sobre pares de coordenadas
@@ -1054,6 +1059,9 @@ class UnifiedPhysicsEngine:
                     heat,
                     moisture
                 )
+        
+        # Aplica fontes dos agentes aos grids
+        self.apply_agent_sources()
         
         # 3. Advecção
         self.apply_advection(dt)
