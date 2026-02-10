@@ -24,7 +24,10 @@ class UnifiedPhysicsEngine:
     def __init__(self, scenario: cfg.BuildingScenario, physics_config: cfg.PhysicsConfig):
         self.scenario = scenario
         self.config = physics_config
-        
+        self.external_temperature = 20.0 + 273.15  # K
+        self.external_humidity = 0.6  # 60%
+        self.external_co2 = 400 * cfg.CONVERSION_FACTORS['co2_ppm_to_kgm3']
+
         # Calcula dimensões do grid
         self.cells_x = int(scenario.total_width / physics_config.cell_size)
         self.cells_y = int(scenario.total_height / physics_config.cell_size)
@@ -60,11 +63,6 @@ class UnifiedPhysicsEngine:
         # Parâmetros para transferência de calor
         self.U_walls = 2.0  # Coeficiente de transferência de calor paredes (W/m²K)
         self.U_windows = 3.0  # Coeficiente de transferência de calor janelas (W/m²K)
-        
-        # Condições externas (padrão)
-        self.external_temperature = 20.0 + 273.15  # K
-        self.external_humidity = 0.6  # 60%
-        self.external_co2 = 400 * cfg.CONVERSION_FACTORS['co2_ppm_to_kgm3']
         
         # Histórico para análise
         self.history = {
