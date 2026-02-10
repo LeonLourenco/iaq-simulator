@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Optional, Any
 from enum import Enum
@@ -1981,8 +1982,6 @@ def create_scenario_from_json(json_data: Dict) -> BuildingScenario:
 
 def scenario_to_dataframe(scenario: BuildingScenario) -> Dict[str, pd.DataFrame]:
     """Converte um cenário em DataFrames para visualização."""
-    import pandas as pd
-    
     # DataFrame de zonas
     zone_data = []
     for zone in scenario.zones:
@@ -2095,7 +2094,6 @@ if __name__ == "__main__":
     
     # Testa criação de DataFrame
     try:
-        import pandas as pd
         dfs = scenario_to_dataframe(school)
         print(f"\n📊 DataFrames criados: {', '.join(dfs.keys())}")
         print(f"   Zonas: {len(dfs['zones'])} linhas")
