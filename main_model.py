@@ -49,7 +49,7 @@ class IAQSimulationModel(Model):
         )
         
         # Agentes e Listas
-        self.agents: List[Any] = []
+        self.simulation_agents: List[Any] = []        
         self.agent_config = scenario.agent_config
         self.current_agent_emissions = []
         self._initialize_agents()
@@ -171,7 +171,7 @@ class IAQSimulationModel(Model):
                     agent.pos = (x, y)
 
                 self.schedule.add(agent)
-                self.agents.append(agent)
+                self.simulation_agents.append(agent)
             
             total_agents_created += zone_agent_count
         
@@ -180,8 +180,8 @@ class IAQSimulationModel(Model):
     def _calculate_initial_metrics(self) -> Dict[str, Any]:
         """Retorna estrutura base de métricas zerada."""
         return {
-            'total_agents': len(self.agents),
-            'infected_agents': sum(1 for a in self.agents if a.infected),
+            'total_agents': len(self.simulation_agents),
+            'infected_agents': sum(1 for a in self.simulation_agents if a.infected),
             'average_co2': 400.0,
             'average_hcho': 10.0,
             'average_virus': 0.0,
@@ -215,7 +215,7 @@ class IAQSimulationModel(Model):
         elif intervention_type == 'mask_mandate':
             # Força uso de máscara baseado na conformidade
             compliance = parameters.get('compliance', 0.8)
-            for agent in self.agents:
+            for agent in self.simulation_agents:
                 if np.random.random() < compliance:
                     agent.mask_wearing = True
                     agent.mask_type = agent._assign_mask_type() if agent.mask_wearing else None
@@ -223,37 +223,34 @@ class IAQSimulationModel(Model):
         
         elif intervention_type == 'reduce_occupancy':
             # Remove agentes aleatoriamente
-            if not self.agents:
+            if not self.simulation_agents:
                 return
                 
             reduction_ratio = parameters.get('reduction', 0.3)
-            remove_count = int(len(self.agents) * reduction_ratio)
+            remove_count = int(len(self.simulation_agents) * reduction_ratio)
             
             # Escolhe aleatoriamente para remover
-            agents_to_remove = np.random.choice(self.agents, remove_count, replace=False)
+            agents_to_remove = np.random.choice(self.simulation_agents, remove_count, replace=False)
             
             for agent in agents_to_remove:
                 if agent.pos:
                     self.grid.remove_agent(agent)
                 self.schedule.remove(agent)
-                self.agents.remove(agent)
             
             # Atualiza lista principal
-            # Nota: np.random.choice retorna numpy array, a remoção da lista deve ser cuidadosa
-            # Reconstruindo a lista é mais seguro e rápido que .remove() repetido
             ids_to_remove = set(a.unique_id for a in agents_to_remove)
-            self.agents = [a for a in self.agents if a.unique_id not in ids_to_remove]
+            self.simulation_agents = [a for a in self.simulation_agents if a.unique_id not in ids_to_remove]
         
         print(f"Intervenção aplicada: {intervention_type}")
 
     def calculate_risk_metrics(self) -> Dict[str, float]:
         """Calcula métricas de risco epidemiológico (Wells-Riley)."""
-        total_agents = len(self.agents)
+        total_agents = len(self.simulation_agents)
         if total_agents == 0:
             return {'infection_risk': 0.0, 'r_effective': 0.0, 'infected_count': 0, 
                     'infection_rate': 0.0, 'total_viral_load': 0.0, 'high_risk_zones': 0}
 
-        infected_count = sum(1 for a in self.agents if a.infected)
+        infected_count = sum(1 for a in self.simulation_agents if a.infected)
         
         # Carga viral total no ambiente (Quanta)
         zone_stats = self.physics.get_zone_statistics()
@@ -340,7 +337,7 @@ class IAQSimulationModel(Model):
         # 2. Integração Física
         # Prepara dados agregados para o solver físico (otimização)
         # Filtra apenas agentes ativos
-        active_agents = [a for a in self.agents if a.pos is not None]
+        active_agents = [a for a in self.simulation_agents if a.pos is not None]
         
         agent_data = {
             'emissions': self.current_agent_emissions,
@@ -377,8 +374,8 @@ class IAQSimulationModel(Model):
             avg_co2, avg_hcho = 400.0, 10.0
             
         # Conforto
-        if self.agents:
-            avg_comfort = np.mean([a.comfort_level for a in self.agents if hasattr(a, 'comfort_level')])
+        if self.simulation_agents:
+            avg_comfort = np.mean([a.comfort_level for a in self.simulation_agents if hasattr(a, 'comfort_level')])
         else:
             avg_comfort = 1.0
 
@@ -404,11 +401,11 @@ class IAQSimulationModel(Model):
             self.simulation_data['zone_stats'].append(self.physics.get_zone_statistics())
             
             # Estatísticas agregadas dos agentes
-            if self.agents:
+            if self.simulation_agents:
                 stats = {
-                    'total': len(self.agents),
-                    'infected': sum(1 for a in self.agents if a.infected),
-                    'mask_wearing': sum(1 for a in self.agents if a.mask_wearing),
+                    'total': len(self.simulation_agents),
+                    'infected': sum(1 for a in self.simulation_agents if a.infected),
+                    'mask_wearing': sum(1 for a in self.simulation_agents if a.mask_wearing),
                     'avg_comfort': self.current_metrics['comfort_index']
                 }
             else:
@@ -420,7 +417,7 @@ class IAQSimulationModel(Model):
 
     def get_visualization_data(self) -> Dict[str, Any]:
         """Prepara payload leve para o frontend (Streamlit)."""
-        active_agents = [a for a in self.agents if a.pos is not None]
+        active_agents = [a for a in self.simulation_agents if a.pos is not None]
         
         return {
             'physics': self.physics.get_visualization_data(),
@@ -440,7 +437,7 @@ class IAQSimulationModel(Model):
     def get_simulation_summary(self) -> Dict[str, Any]:
         """Gera relatório final consolidado."""
         total_exposure = sum(sum(exp['dose'] for exp in a.exposure_history) 
-                             for a in self.agents if hasattr(a, 'exposure_history'))
+                             for a in self.simulation_agents if hasattr(a, 'exposure_history'))
         
         peak_infected = 0
         if self.simulation_data['agent_stats']:
@@ -449,8 +446,8 @@ class IAQSimulationModel(Model):
         return {
             'scenario': self.scenario.name,
             'duration_hours': self.time / 3600,
-            'total_agents': len(self.agents),
-            'total_infections': sum(1 for a in self.agents if a.infection_start_time is not None),
+            'total_agents': len(self.simulation_agents),
+            'total_infections': sum(1 for a in self.simulation_agents if a.infection_start_time is not None),
             'peak_infected': peak_infected,
             'total_exposure': total_exposure,
             'average_co2': self.current_metrics['average_co2'],
@@ -466,7 +463,7 @@ class IAQSimulationModel(Model):
                 'scenario': self.scenario.name,
                 'building_type': str(self.scenario.building_type.value),
                 'simulation_time_seconds': self.time,
-                'total_agents': len(self.agents)
+                'total_agents': len(self.simulation_agents)
             },
             'metrics_final': self.current_metrics,
             'history': {
