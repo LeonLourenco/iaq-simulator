@@ -7,7 +7,6 @@ e capacidade de aprendizado
 import numpy as np
 from mesa import Agent
 from mesa.time import RandomActivation
-from mesa.space import MultiGrid
 from typing import Dict, List, Tuple, Optional, Any
 import config_final as cfg
 
@@ -81,12 +80,24 @@ class HumanAgent(Agent):
         # Aprendizado
         self.learning_rate = 0.1
         self.adaptation_threshold = 0.7
+
+    def _safe_choice(self, options: List[Any], p: Optional[List[float]] = None) -> Any:
+        """
+        Helper para escolher elemento de uma lista preservando seu tipo original.
+        Evita que o NumPy converta Enums para strings (numpy.str_), o que causa
+        erros ao tentar acessar .value depois.
+        """
+        opts = list(options)
+        # Escolhe um índice aleatório
+        idx = np.random.choice(len(opts), p=p)
+        # Retorna o objeto original da lista
+        return opts[idx]
         
     def _assign_age_group(self, age_distribution: Dict[str, float]) -> str:
         """Atribui grupo etário baseado na distribuição."""
         groups = list(age_distribution.keys())
         probabilities = list(age_distribution.values())
-        return np.random.choice(groups, p=probabilities)
+        return self._safe_choice(groups, p=probabilities)
     
     def _assign_weight(self) -> float:
         """Atribui peso baseado no grupo etário."""
@@ -122,7 +133,7 @@ class HumanAgent(Agent):
         """Atribui tipo de máscara."""
         mask_types = ['surgical', 'n95', 'cloth']
         probabilities = [0.5, 0.3, 0.2]  # probabilidades
-        return np.random.choice(mask_types, p=probabilities)
+        return self._safe_choice(mask_types, p=probabilities)
     
     def _calculate_bmr(self) -> float:
         """Calcula taxa metabólica basal (Harris-Benedict)."""
@@ -255,7 +266,7 @@ class HumanAgent(Agent):
         """Atribui atividade inicial baseada na distribuição."""
         activities = list(activity_distribution.keys())
         probabilities = list(activity_distribution.values())
-        return np.random.choice(activities, p=probabilities)
+        return self._safe_choice(activities, p=probabilities)
     
     def _generate_activity_duration(self) -> float:
         """Gera duração para a atividade atual."""
@@ -364,7 +375,7 @@ class HumanAgent(Agent):
         if self.zone_type == cfg.ZoneType.CLASSROOM:
             if is_weekday and is_morning:
                 # Aulas matinais
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.SEATED_QUIET,
                     cfg.AgentActivity.SEATED_TYPING,
                     cfg.AgentActivity.TALKING,
@@ -373,7 +384,7 @@ class HumanAgent(Agent):
                 ], p=[0.4, 0.2, 0.2, 0.1, 0.1])
             elif is_weekday and is_afternoon:
                 # Aulas vespertinas
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.SEATED_QUIET,
                     cfg.AgentActivity.SEATED_TYPING,
                     cfg.AgentActivity.TALKING,
@@ -381,7 +392,7 @@ class HumanAgent(Agent):
                 ], p=[0.5, 0.2, 0.2, 0.1])
             else:
                 # Fora do horário escolar
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.WALKING,
                     cfg.AgentActivity.STANDING,
                     cfg.AgentActivity.SEATED_QUIET,
@@ -391,7 +402,7 @@ class HumanAgent(Agent):
         elif self.zone_type == cfg.ZoneType.OFFICE_SPACE:
             if is_weekday and (is_morning or is_afternoon):
                 # Horário de trabalho
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.SEATED_TYPING,
                     cfg.AgentActivity.SEATED_QUIET,
                     cfg.AgentActivity.TALKING,
@@ -404,7 +415,7 @@ class HumanAgent(Agent):
                 new_activity = cfg.AgentActivity.WALKING
             else:
                 # Fim de semana ou noite
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.READING,
                     cfg.AgentActivity.SEATED_QUIET,
                     cfg.AgentActivity.WALKING
@@ -413,7 +424,7 @@ class HumanAgent(Agent):
         elif self.zone_type == cfg.ZoneType.GYM_AREA:
             if is_evening or is_afternoon:
                 # Horários de pico na academia
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.EXERCISING_LIGHT,
                     cfg.AgentActivity.EXERCISING_INTENSE,
                     cfg.AgentActivity.WALKING,
@@ -421,7 +432,7 @@ class HumanAgent(Agent):
                 ], p=[0.5, 0.3, 0.1, 0.1])
             else:
                 # Horários fora de pico
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.EXERCISING_LIGHT,
                     cfg.AgentActivity.WALKING,
                     cfg.AgentActivity.STANDING
@@ -430,14 +441,14 @@ class HumanAgent(Agent):
         elif self.zone_type == cfg.ZoneType.CAFETERIA:
             if (11 <= hour_of_day < 13) or (17 <= hour_of_day < 19):
                 # Horários de refeição
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.EATING,
                     cfg.AgentActivity.DRINKING,
                     cfg.AgentActivity.TALKING
                 ], p=[0.6, 0.2, 0.2])
             else:
                 # Fora dos horários de refeição
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.SEATED_QUIET,
                     cfg.AgentActivity.DRINKING,
                     cfg.AgentActivity.READING,
@@ -446,7 +457,7 @@ class HumanAgent(Agent):
         
         elif self.zone_type == cfg.ZoneType.LIBRARY:
             # Atividades quietas
-            new_activity = np.random.choice([
+            new_activity = self._safe_choice([
                 cfg.AgentActivity.READING,
                 cfg.AgentActivity.SEATED_QUIET,
                 cfg.AgentActivity.SEATED_TYPING,
@@ -455,7 +466,7 @@ class HumanAgent(Agent):
         
         elif self.zone_type == cfg.ZoneType.MEETING_ROOM:
             if is_weekday and (is_morning or is_afternoon):
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.TALKING,
                     cfg.AgentActivity.PRESENTING,
                     cfg.AgentActivity.SEATED_QUIET,
@@ -468,7 +479,7 @@ class HumanAgent(Agent):
             if is_night:
                 new_activity = cfg.AgentActivity.SLEEPING
             else:
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.SEATED_QUIET,
                     cfg.AgentActivity.READING,
                     cfg.AgentActivity.STANDING,
@@ -477,7 +488,7 @@ class HumanAgent(Agent):
         
         elif self.zone_type == cfg.ZoneType.RESTROOM:
             # Atividades curtas
-            new_activity = np.random.choice([
+            new_activity = self._safe_choice([
                 cfg.AgentActivity.STANDING,
                 cfg.AgentActivity.WALKING
             ])
@@ -487,14 +498,14 @@ class HumanAgent(Agent):
         
         elif self.zone_type == cfg.ZoneType.LIVING_ROOM:
             if is_evening:
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.SEATED_QUIET,
-                    cfg.AgentActivity.WATCHING_TV,
+                    cfg.AgentActivity.WATCHING_TV if hasattr(cfg.AgentActivity, 'WATCHING_TV') else cfg.AgentActivity.SEATED_QUIET,
                     cfg.AgentActivity.READING,
                     cfg.AgentActivity.TALKING
                 ])
             else:
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.SEATED_QUIET,
                     cfg.AgentActivity.READING,
                     cfg.AgentActivity.WALKING
@@ -504,7 +515,7 @@ class HumanAgent(Agent):
             if is_night:
                 new_activity = cfg.AgentActivity.SLEEPING
             else:
-                new_activity = np.random.choice([
+                new_activity = self._safe_choice([
                     cfg.AgentActivity.SEATED_QUIET,
                     cfg.AgentActivity.READING,
                     cfg.AgentActivity.STANDING
@@ -514,7 +525,7 @@ class HumanAgent(Agent):
             # Para outras zonas, usa distribuição padrão
             activities = list(self.model.agent_config.activity_distribution.keys())
             probabilities = list(self.model.agent_config.activity_distribution.values())
-            new_activity = np.random.choice(activities, p=probabilities)
+            new_activity = self._safe_choice(activities, p=probabilities)
         
         # Atualiza atividade
         self.current_activity = new_activity
@@ -1156,7 +1167,7 @@ class LearningAgent(HumanAgent):
             'stay', 'move_random', 'move_to_better', 
             'wear_mask', 'remove_mask', 'increase_distance'
         ]
-        return np.random.choice(actions)
+        return self._safe_choice(actions)
     
     def _choose_best_action(self, state: str) -> str:
         """Escolhe melhor ação baseada na Q-table."""
