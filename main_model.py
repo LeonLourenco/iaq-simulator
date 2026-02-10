@@ -49,7 +49,8 @@ class IAQSimulationModel(Model):
         )
         
         # Agentes e Listas
-        self.simulation_agents: List[Any] = []        
+        self.simulation_agents: List[Any] = []
+        
         self.agent_config = scenario.agent_config
         self.current_agent_emissions = []
         self._initialize_agents()
@@ -185,6 +186,8 @@ class IAQSimulationModel(Model):
             'average_co2': 400.0,
             'average_hcho': 10.0,
             'average_virus': 0.0,
+            'average_temperature': self.scenario.temperature_setpoint,
+            'average_humidity': self.scenario.humidity_setpoint,
             'ventilation_efficiency': 1.0,
             'infection_risk': 0.0,
             'energy_consumption': 0.0,
@@ -236,6 +239,7 @@ class IAQSimulationModel(Model):
                 if agent.pos:
                     self.grid.remove_agent(agent)
                 self.schedule.remove(agent)
+                # Nota: a remoção da lista principal é feita abaixo
             
             # Atualiza lista principal
             ids_to_remove = set(a.unique_id for a in agents_to_remove)
@@ -370,8 +374,11 @@ class IAQSimulationModel(Model):
         if zone_stats:
             avg_co2 = np.mean([s['concentrations']['co2_ppm_mean'] for s in zone_stats.values()])
             avg_hcho = np.mean([s['concentrations']['hcho_ppb_mean'] for s in zone_stats.values()])
+            avg_temp = np.mean([s['concentrations']['temperature_c_mean'] for s in zone_stats.values()])
+            avg_hum = np.mean([s['concentrations']['humidity_percent_mean'] for s in zone_stats.values()])
         else:
             avg_co2, avg_hcho = 400.0, 10.0
+            avg_temp, avg_hum = self.scenario.temperature_setpoint, self.scenario.humidity_setpoint
             
         # Conforto
         if self.simulation_agents:
@@ -387,6 +394,8 @@ class IAQSimulationModel(Model):
             'r_effective': risk_metrics['r_effective'],
             'average_co2': float(avg_co2),
             'average_hcho': float(avg_hcho),
+            'average_temperature': float(avg_temp),
+            'average_humidity': float(avg_hum),
             'infection_risk': risk_metrics['infection_risk'],
             'energy_consumption': energy_metrics['total_energy_kwh'],
             'comfort_index': float(avg_comfort),
