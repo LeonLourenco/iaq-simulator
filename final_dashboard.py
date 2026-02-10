@@ -232,7 +232,7 @@ with st.sidebar:
             })
             st.success(f"{sel_intervention} aplicada!")
 
-# --- VISUALIZAÇÃO ---
+# --- PARTE 1: VISUALIZAÇÃO ---
 
 if st.session_state.simulation_model is not None:
     model = st.session_state.simulation_model
@@ -306,7 +306,6 @@ if st.session_state.simulation_model is not None:
             if 'average_humidity' in df_hist.columns:
                 fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['average_humidity']*100, name="Umid (%)", line=dict(dash='dot')), row=2, col=2)
             
-            # Substituído use_container_width=True por width="stretch"
             fig.update_layout(height=600, showlegend=True)
             st.plotly_chart(fig, width="stretch")
         else:
@@ -352,7 +351,6 @@ if st.session_state.simulation_model is not None:
                     height=600,
                     yaxis=dict(scaleanchor="x", scaleratio=1)
                 )
-                # Substituído use_container_width=True por width="stretch"
                 st.plotly_chart(fig_map, width="stretch")
                 
                 st.caption("Nota: Cores dos pontos indicam saúde (Verde=Saudável, Vermelho=Infectado). Fundo indica CO₂.")
@@ -377,15 +375,12 @@ if st.session_state.simulation_model is not None:
                         "ACH (Trocas/h)": f"{data.get('ach_actual', 0):.2f}"
                     })
                 
-                # Substituído use_container_width=True por width="stretch"
                 st.dataframe(pd.DataFrame(zone_rows), width="stretch")
                 
                 zones = [z['Zona'] for z in zone_rows]
                 co2_vals = [float(z['CO₂ (ppm)']) for z in zone_rows]
                 fig_bar = go.Figure([go.Bar(x=zones, y=co2_vals, marker_color='orange')])
                 fig_bar.update_layout(title="Comparativo de CO₂ por Zona", yaxis_title="ppm")
-                
-                # Substituído use_container_width=True por width="stretch"
                 st.plotly_chart(fig_bar, width="stretch")
 
     # --- ABA 4: EXPORTAR ---
@@ -423,7 +418,7 @@ if st.session_state.simulation_model is not None:
                     st.warning("Sem histórico para exportar.")
 
 elif not st.session_state.simulation_running:
-    # Tela Inicial (Placeholder)
+    # Tela Inicial
     st.info("👈 Configure o cenário na barra lateral e clique em 'Iniciar' para começar.")
     
     st.markdown("""
@@ -437,7 +432,7 @@ elif not st.session_state.simulation_running:
     * **Intervenções:** Teste o impacto de máscaras, ventilação e redução de ocupação em tempo real.
     """)
 
-# --- LÓGICA DE EXECUÇÃO ---
+# --- PARTE 2: LÓGICA DE EXECUÇÃO ---
 
 if st.session_state.simulation_running and not st.session_state.simulation_paused:
     model = st.session_state.simulation_model
@@ -458,10 +453,9 @@ if st.session_state.simulation_running and not st.session_state.simulation_pause
             
             st.session_state.simulation_history.append({
                 'time': model.time,
-                'metrics': model.current_metrics
+                'metrics': model.current_metrics.copy() 
             })
             
-            # Rerun para atualizar a tela
             st.rerun()
             
         except Exception as e:
