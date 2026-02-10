@@ -1031,14 +1031,15 @@ class AdaptiveScheduler(RandomActivation):
     
     def step(self) -> None:
         """Executa um passo para todos os agentes, com priorização."""
-        agent_keys = list(self._agents.keys())
+        # self.agents é um AgentSet (iterável), converte para lista para permitir ordenação
+        agents = list(self.agents)
         
         if self.prioritization_enabled:
-            # Ordena agentes por prioridade
-            agent_keys.sort(key=lambda x: self._calculate_priority(self._agents[x]))
+            # Ordena agentes por prioridade (usando o próprio objeto agente)
+            agents.sort(key=lambda x: self._calculate_priority(x))
         
-        for agent_key in agent_keys:
-            self._agents[agent_key].step()
+        for agent in agents:
+            agent.step()
         
         self.steps += 1
         self.time += 1
