@@ -232,7 +232,7 @@ with st.sidebar:
             })
             st.success(f"{sel_intervention} aplicada!")
 
-# --- PARTE 1: VISUALIZAÇÃO (MOSTRAR DADOS PRIMEIRO) ---
+# --- VISUALIZAÇÃO ---
 
 if st.session_state.simulation_model is not None:
     model = st.session_state.simulation_model
@@ -263,7 +263,6 @@ if st.session_state.simulation_model is not None:
         
     with kpi3:
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        # Tenta pegar lista de agentes de forma segura
         total_agents = len(model.simulation_agents) if hasattr(model, 'simulation_agents') else 0
         inf_agents = metrics.get('infected_agents', 0)
         st.metric("Agentes Infectados", f"{inf_agents}", f"Total: {total_agents}")
@@ -301,14 +300,15 @@ if st.session_state.simulation_model is not None:
             # HCHO
             fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['average_hcho'], name="HCHO", line=dict(color='purple')), row=2, col=1)
             
-            # Temp/Hum (com verificação de chave para evitar erro)
+            # Temp/Hum
             if 'average_temperature' in df_hist.columns:
                 fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['average_temperature'], name="Temp (°C)"), row=2, col=2)
             if 'average_humidity' in df_hist.columns:
                 fig.add_trace(go.Scatter(x=df_hist['time_h'], y=df_hist['average_humidity']*100, name="Umid (%)", line=dict(dash='dot')), row=2, col=2)
             
+            # Substituído use_container_width=True por width="stretch"
             fig.update_layout(height=600, showlegend=True)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("Iniciando coleta de dados...")
 
@@ -352,7 +352,8 @@ if st.session_state.simulation_model is not None:
                     height=600,
                     yaxis=dict(scaleanchor="x", scaleratio=1)
                 )
-                st.plotly_chart(fig_map, use_container_width=True)
+                # Substituído use_container_width=True por width="stretch"
+                st.plotly_chart(fig_map, width="stretch")
                 
                 st.caption("Nota: Cores dos pontos indicam saúde (Verde=Saudável, Vermelho=Infectado). Fundo indica CO₂.")
             else:
@@ -376,13 +377,16 @@ if st.session_state.simulation_model is not None:
                         "ACH (Trocas/h)": f"{data.get('ach_actual', 0):.2f}"
                     })
                 
-                st.dataframe(pd.DataFrame(zone_rows), use_container_width=True)
+                # Substituído use_container_width=True por width="stretch"
+                st.dataframe(pd.DataFrame(zone_rows), width="stretch")
                 
                 zones = [z['Zona'] for z in zone_rows]
                 co2_vals = [float(z['CO₂ (ppm)']) for z in zone_rows]
                 fig_bar = go.Figure([go.Bar(x=zones, y=co2_vals, marker_color='orange')])
                 fig_bar.update_layout(title="Comparativo de CO₂ por Zona", yaxis_title="ppm")
-                st.plotly_chart(fig_bar, use_container_width=True)
+                
+                # Substituído use_container_width=True por width="stretch"
+                st.plotly_chart(fig_bar, width="stretch")
 
     # --- ABA 4: EXPORTAR ---
     with tab_export:
@@ -433,7 +437,7 @@ elif not st.session_state.simulation_running:
     * **Intervenções:** Teste o impacto de máscaras, ventilação e redução de ocupação em tempo real.
     """)
 
-# --- PARTE 2: LÓGICA DE EXECUÇÃO (RODAR NO FINAL) ---
+# --- LÓGICA DE EXECUÇÃO ---
 
 if st.session_state.simulation_running and not st.session_state.simulation_paused:
     model = st.session_state.simulation_model
@@ -457,7 +461,7 @@ if st.session_state.simulation_running and not st.session_state.simulation_pause
                 'metrics': model.current_metrics
             })
             
-            # Rerun para atualizar a tela (vai voltar pro topo e desenhar os gráficos novos)
+            # Rerun para atualizar a tela
             st.rerun()
             
         except Exception as e:
