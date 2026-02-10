@@ -32,9 +32,36 @@ class HumanAgent(Agent):
         
         # Estado de saúde
         self.infected = initial_infected
-        self.infection_start_time = None
-        self.viral_load = 0.0
+        
+        # --- CORREÇÃO: Definir tempo de início para infectados iniciais ---
+        if self.infected:
+            # Assume que a infecção começou entre 0 e 5 dias atrás
+            # Isso cria variabilidade na carga viral inicial
+            days_infected = np.random.uniform(0, 5)
+            self.infection_start_time = -days_infected * 86400
+            
+            # Define carga viral inicial baseada no tempo
+            # Simplificação: usa a lógica de evolução para definir carga atual
+            peak_time = 4 * 86400 # pico médio
+            duration = 12 * 86400 # duração média
+            infection_duration = -self.infection_start_time
+            
+            if infection_duration < peak_time:
+                self.viral_load = infection_duration / peak_time
+            elif infection_duration < duration:
+                decline_phase = (infection_duration - peak_time) / (duration - peak_time)
+                self.viral_load = max(0.0, 1.0 - decline_phase * 0.8)
+            else:
+                self.viral_load = 0.1 # Finalzinho da infecção
+        else:
+            self.infection_start_time = None
+            self.viral_load = 0.0
+        # ------------------------------------------------------------------
+
         self.symptoms = False
+        if self.infected:
+            self.symptoms = np.random.random() < 0.7 # 70% sintomáticos
+            
         self.mask_wearing = np.random.random() < agent_config.mask_wearing_prob
         self.vaccinated = np.random.random() < agent_config.vaccination_rate
         self.mask_type = self._assign_mask_type() if self.mask_wearing else None
@@ -715,6 +742,11 @@ class HumanAgent(Agent):
             return
         
         current_time = self.model.schedule.time
+        
+        # Segurança: se infection_start_time for None (bug possível), reseta
+        if self.infection_start_time is None:
+             self.infection_start_time = current_time
+        
         infection_duration = current_time - self.infection_start_time
         
         # Evolução da carga viral (curva gaussiana)
@@ -1031,6 +1063,7 @@ class AdaptiveScheduler(RandomActivation):
     
     def step(self) -> None:
         """Executa um passo para todos os agentes, com priorização."""
+        # --- CORREÇÃO: Compatibilidade com Mesa 3.0+ ---
         # self.agents é um AgentSet (iterável), converte para lista para permitir ordenação
         agents = list(self.agents)
         
