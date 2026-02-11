@@ -355,7 +355,6 @@ class HumanAgent(Agent):
         """Seleciona nova atividade baseada no contexto."""
         current_time = self.model.schedule.time
         
-        # (Lógica simplificada para caber, mantendo a estrutura robusta)
         activities = list(self.model.agent_config.activity_distribution.keys())
         probabilities = list(self.model.agent_config.activity_distribution.values())
         new_activity = self._safe_choice(activities, p=probabilities)
@@ -378,7 +377,7 @@ class HumanAgent(Agent):
         self.emission_rates = self._calculate_emission_rates()
     
     def decide_movement(self):
-        """Decide movimento respeitando paredes e obstáculos."""
+        """Decide movimento baseado no comportamento atual."""
         if not self.moving:
             return None
         
@@ -390,11 +389,12 @@ class HumanAgent(Agent):
             speed = 0.0
         
         self.movement_speed = speed
-        
-        # Lógica de distanciamento social e movimento aleatório
+        direction = np.zeros(2)
+        has_force = False
         nearby_agents = self.model.grid.get_neighbors(self.pos, moore=True, radius=3)
+        
+        # 1. Força de Distanciamento Social
         if nearby_agents and self.social_distance_preference > 0.5:
-            # Calcula vetor de repulsão
             repulsion_vector = np.zeros(2)
             for agent in nearby_agents:
                 if isinstance(agent, HumanAgent):
@@ -410,49 +410,42 @@ class HumanAgent(Agent):
             
             repulsion_norm = np.linalg.norm(repulsion_vector)
             if repulsion_norm > 0:
-                repulsion_vector /= repulsion_norm
+                direction += repulsion_vector / repulsion_norm * 0.6  # Peso da repulsão
+                has_force = True
+
+        # 2. Força de Destino (Target)
+        if self.target_pos:
+            dx = self.target_pos[0] - self.pos[0]
+            dy = self.target_pos[1] - self.pos[1]
+            dist = np.sqrt(dx**2 + dy**2)
             
-            if self.target_pos:
-                dx = self.target_pos[0] - self.pos[0]
-                dy = self.target_pos[1] - self.pos[1]
-                dist = np.sqrt(dx**2 + dy**2)
-                if dist > 0:
-                    target_vector = np.array([dx/dist, dy/dist])
-                    direction = 0.7 * target_vector + 0.3 * repulsion_vector
-            else:
-                if np.random.random() < 0.3 or repulsion_norm > 0:
-                    direction = repulsion_vector if repulsion_norm > 0 else np.random.uniform(-1, 1, 2)
-                else:
-                    return None
+            if dist < 1.0:
+                self.target_pos = None
+                return None # Chegou
             
-            direction_norm = np.linalg.norm(direction)
-            if direction_norm > 0:
-                direction /= direction_norm
-                dx, dy = direction[0], direction[1]
-            else:
-                return None
+            if dist > 0:
+                target_vector = np.array([dx/dist, dy/dist])
+                direction += target_vector * 0.4  # Peso do destino
+                has_force = True
+        
+        # 3. Componente Aleatória (se não houver forças fortes ou para variar)
+        if not has_force or np.random.random() < 0.2:
+            random_vec = np.random.uniform(-1, 1, 2)
+            direction += random_vec * 0.5
+        
+        # Normalização Final
+        direction_norm = np.linalg.norm(direction)
+        if direction_norm > 0:
+            direction /= direction_norm
+            dx, dy = direction[0], direction[1]
         else:
-            # Movimento padrão sem repulsão forte
-            if self.target_pos:
-                dx = self.target_pos[0] - self.pos[0]
-                dy = self.target_pos[1] - self.pos[1]
-                dist = np.sqrt(dx**2 + dy**2)
-                if dist < 1.0:
-                    self.target_pos = None
-                    return None
-                if dist > 0:
-                    dx /= dist
-                    dy /= dist
-            else:
-                if np.random.random() < 0.3:
-                    dx = np.random.uniform(-1, 1)
-                    dy = np.random.uniform(-1, 1)
-                    norm = np.sqrt(dx**2 + dy**2)
-                    if norm > 0:
-                        dx /= norm
-                        dy /= norm
-                else:
-                    return None
+            # Fallback seguro: movimento aleatório
+            dx = np.random.uniform(-1, 1)
+            dy = np.random.uniform(-1, 1)
+            norm = np.sqrt(dx**2 + dy**2)
+            if norm > 0:
+                dx /= norm
+                dy /= norm
         
         # Calcula nova posição em células
         dt = self.model.dt
@@ -462,12 +455,10 @@ class HumanAgent(Agent):
         new_x = int(self.pos[0] + cells_dx)
         new_y = int(self.pos[1] + cells_dy)
         
-        # Verificação de Obstáculos
-        # Só permite o movimento se a célula de destino for "andável" (não parede/móvel)
+        # --- VERIFICAÇÃO DE OBSTÁCULOS ---
         if self.model.physics.is_walkable(new_x, new_y):
             return (new_x, new_y)
         
-        # Se for parede, para ou tenta outra direção no próximo passo
         return None
     
     def check_infection(self, virus_concentration: float, puf_factor: float = 1.0):
@@ -625,8 +616,6 @@ class HumanAgent(Agent):
                             score = (temp_score * 0.25 + co2_score * 0.25 + 
                                     hum_score * 0.15 + air_age_score * 0.15 + 
                                     velocity_score * 0.10 + virus_score * 0.10)
-                            
-                            # Verificação de Obstáculos
                             if (score > best_score and 
                                 self.model.grid.is_cell_empty((nx, ny)) and 
                                 self.model.physics.is_walkable(nx, ny)):
@@ -651,8 +640,6 @@ class HumanAgent(Agent):
             for dx in range(-radius, radius + 1):
                 for dy in range(-radius, radius + 1):
                     nx, ny = x + dx, y + dy
-                    
-                    # Verificação de Obstáculos
                     if (0 <= nx < self.model.physics.cells_x and 
                         0 <= ny < self.model.physics.cells_y and
                         self.model.grid.is_cell_empty((nx, ny)) and
