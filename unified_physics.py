@@ -1,6 +1,6 @@
 """
 MOTOR FÍSICO
-Integra toda a física do modelo
+Integra toda a física do modelo e define obstáculos (paredes/móveis).
 """
 
 import numpy as np
@@ -19,13 +19,14 @@ class UnifiedPhysicsEngine:
     - Química de materiais
     - Transferência multizona
     - Troca de calor e umidade
+    - Gestão de obstáculos (paredes e móveis)
     """
     
     def __init__(self, scenario: cfg.BuildingScenario, physics_config: cfg.PhysicsConfig):
         self.scenario = scenario
         self.config = physics_config
         
-        # Condições externas (padrão)
+        # Condições externas (padrão) - Definidas ANTES de usar em _initialize_grids
         self.external_temperature = 20.0 + 273.15  # K
         self.external_humidity = 0.6  # 60%
         self.external_co2 = 400 * cfg.CONVERSION_FACTORS['co2_ppm_to_kgm3']
@@ -39,6 +40,9 @@ class UnifiedPhysicsEngine:
         
         # Mapa de zonas
         self.zone_map = self._create_zone_map()
+        
+        # Mapa de Obstáculos (Paredes e Móveis)
+        self.obstacle_grid = self._create_obstacle_grid()
         
         # Mapa de materiais
         self.material_grid = self._create_material_grid()
@@ -120,7 +124,66 @@ class UnifiedPhysicsEngine:
                 current_y += zone.height_ratio
         
         return zone_map
-    
+
+    def _create_obstacle_grid(self) -> np.ndarray:
+        """
+        Gera um mapa de obstáculos:
+        0 = Livre
+        1 = Parede (Estrutural)
+        2 = Móvel/Obstáculo interno
+        """
+        obstacles = np.zeros((self.cells_y, self.cells_x), dtype=np.int8)
+        
+        # 1. Paredes Externas (Bordas do mapa)
+        obstacles[0, :] = 1
+        obstacles[-1, :] = 1
+        obstacles[:, 0] = 1
+        obstacles[:, -1] = 1
+        
+        # 2. Paredes entre Zonas (Baseado na mudança de ID do zone_map)
+        # Detecta onde o ID da zona muda horizontalmente ou verticalmente
+        
+        # Bordas verticais (mudança no eixo X)
+        diff_x = np.abs(np.diff(self.zone_map, axis=1))
+        # Adiciona parede onde há mudança e não é zona 0 (externa)
+        obstacles[:, 1:][(diff_x > 0) & (self.zone_map[:, 1:] != 0)] = 1
+        
+        # Bordas horizontais (mudança no eixo Y)
+        diff_y = np.abs(np.diff(self.zone_map, axis=0))
+        obstacles[1:, :][(diff_y > 0) & (self.zone_map[1:, :] != 0)] = 1
+        
+        # 3. Portas (Criar aberturas nas paredes internas)
+        # Varre paredes internas e abre buracos no meio para permitir passagem
+        for y in range(1, self.cells_y - 1):
+            for x in range(1, self.cells_x - 1):
+                if obstacles[y, x] == 1:
+                    # Se for parede vertical (vizinhos verticais são paredes)
+                    if obstacles[y-1, x] == 1 and obstacles[y+1, x] == 1:
+                        # Cria abertura a cada X metros ou no centro
+                        if y % 20 in [9, 10, 11]: # Abertura periódica
+                            obstacles[y, x] = 0
+                    
+                    # Se for parede horizontal
+                    elif obstacles[y, x-1] == 1 and obstacles[y, x+1] == 1:
+                        if x % 20 in [9, 10, 11]:
+                            obstacles[y, x] = 0
+
+        # 4. Móveis (Distribuição aleatória dentro das zonas para criar complexidade)
+        # 5% do espaço livre vira obstáculo (mesas, cadeiras, armários)
+        rng = np.random.default_rng(42) # Seed fixa para consistência visual
+        # Cria máscara apenas onde é livre e não é borda próxima à parede
+        potential_furniture = (obstacles == 0) & (self.zone_map > 0)
+        furniture_mask = potential_furniture & (rng.random(obstacles.shape) < 0.05)
+        obstacles[furniture_mask] = 2
+        
+        return obstacles
+
+    def is_walkable(self, x: int, y: int) -> bool:
+        """Verifica se uma célula é navegável (não é parede nem móvel)."""
+        if 0 <= x < self.cells_x and 0 <= y < self.cells_y:
+            return self.obstacle_grid[y, x] == 0
+        return False
+
     def _create_material_grid(self) -> Dict[str, np.ndarray]:
         """Cria grids de propriedades dos materiais."""
         material_grid = {
@@ -501,6 +564,7 @@ class UnifiedPhysicsEngine:
                 self.heat_gains[zone_idx]['occupants'] += metabolic_heat
                 self.heat_gains[zone_idx]['total'] += metabolic_heat
     
+    # Método para aplicar emissões ao Grid
     def apply_agent_sources(self):
         """Aplica as fontes acumuladas aos grids de concentração."""
         for species in ['co2', 'virus', 'hcho', 'voc', 'pm25', 'pm10']:
@@ -929,16 +993,19 @@ class UnifiedPhysicsEngine:
             self.grids['temperature'][zone_cells] += delta_T
         
         # Perda de calor pelas superfícies
-        surface_cells = self._get_surface_cells()
-        if len(surface_cells[0]) > 0:
-            y_indices, x_indices = surface_cells
-            
+        y_indices, x_indices = self._get_surface_cells()
+        
+        if len(y_indices) > 0:
             # Coeficiente global de transferência de calor
             U = self.U_walls  # W/m²K
             
             # Área por célula de superfície
             cell_perimeter = 4 * self.config.cell_size
             surface_area_per_cell = self.scenario.floor_height * cell_perimeter
+            
+            # Capacidade térmica (precalculada para simplificar loop)
+            cell_volume = (self.config.cell_size ** 2) * self.scenario.floor_height
+            heat_capacity = cell_volume * 1.204 * 1005
             
             for y, x in zip(y_indices, x_indices):
                 temp_diff = self.grids['temperature'][y, x] - self.external_temperature
@@ -947,11 +1014,6 @@ class UnifiedPhysicsEngine:
                 heat_loss = U * surface_area_per_cell * temp_diff * dt  # J
                 
                 # Redução de temperatura
-                cell_volume = (self.config.cell_size ** 2) * self.scenario.floor_height
-                air_density = 1.204  # kg/m³
-                specific_heat = 1005  # J/kg·K
-                heat_capacity = cell_volume * air_density * specific_heat
-                
                 delta_T_loss = heat_loss / heat_capacity
                 self.grids['temperature'][y, x] -= delta_T_loss
                 
@@ -960,19 +1022,13 @@ class UnifiedPhysicsEngine:
     
     def apply_humidity_transfer(self, dt: float):
         """Aplica transferência de umidade."""
-        # Ganhos de umidade de agentes já aplicados via add_agent_emission
-        
-        # Perda de umidade por ventilação já aplicada
-        # Condensação em superfícies frias
         y_indices, x_indices = self._get_surface_cells()
         
-        # Usa zip para iterar sobre pares de coordenadas
         for y, x in zip(y_indices, x_indices):
             temp = self.grids['temperature'][y, x] - 273.15  # °C
             humidity = self.grids['humidity'][y, x]
             
             # Temperatura do ponto de orvalho
-            # Fórmula simplificada: Td = T - ((100 - RH)/5)
             dew_point = temp - ((100 - humidity * 100) / 5)
             
             # Se temperatura da superfície está abaixo do ponto de orvalho
@@ -984,8 +1040,7 @@ class UnifiedPhysicsEngine:
                 
                 # Reduz umidade no ar
                 cell_volume = (self.config.cell_size ** 2) * self.scenario.floor_height
-                air_density = 1.204  # kg/m³
-                humidity_reduction = condensation_mass / (cell_volume * air_density)
+                humidity_reduction = condensation_mass / (cell_volume * 1.204)
                 
                 self.grids['humidity'][y, x] = max(0.0, self.grids['humidity'][y, x] - humidity_reduction)
                 self.sinks['condensation'][y, x] += condensation_mass
@@ -1015,11 +1070,6 @@ class UnifiedPhysicsEngine:
     def step(self, dt: float, current_time: float, agent_data: Optional[Dict] = None):
         """
         Executa um passo completo da física.
-        
-        Args:
-            dt: Passo de tempo (s)
-            current_time: Tempo atual da simulação (s)
-            agent_data: Dados dos agentes para correções
         """
         # 0. Limpa fontes/sumidouros do passo anterior
         self._clear_sources_sinks()
@@ -1284,8 +1334,8 @@ class UnifiedPhysicsEngine:
                 'co2_ppm': self.grids['co2'] * cfg.CONVERSION_FACTORS['co2_kgm3_to_ppm'],
                 'hcho_ppb': self.grids['hcho'] * cfg.CONVERSION_FACTORS['hcho_kgm3_to_ppb'],
                 'voc_ppb': self.grids['voc'] * cfg.CONVERSION_FACTORS['voc_kgm3_to_ppb'],
-                'virus_log': np.log10(self.grids['virus'] + 1e-20),
-                'virus_exposure_log': np.log10(self.grids.get('virus_exposure', self.grids['virus']) + 1e-20),
+                'virus_log': np.log10(np.maximum(self.grids['virus'], 0) + 1e-20),
+                'virus_exposure_log': np.log10(np.maximum(self.grids.get('virus_exposure', self.grids['virus']), 0) + 1e-20),
                 'pm25_ugm3': self.grids['pm25'] * 1e9,
                 'pm10_ugm3': self.grids['pm10'] * 1e9,
                 'temperature_c': self.grids['temperature'] - 273.15,
@@ -1294,7 +1344,8 @@ class UnifiedPhysicsEngine:
                 'air_age_minutes': self.grids['air_age'] / 60.0,
                 'puf_factor': self.grids['puf'] if 'puf' in self.grids else np.ones_like(self.grids['co2']),
                 'zone_map': self.zone_map,
-                'material_map': self.material_grid['type']
+                'material_map': self.material_grid['type'],
+                'obstacle_map': self.obstacle_grid
             },
             'velocity_field': {
                 'x': self.velocity_field[:,:,0],
