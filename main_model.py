@@ -98,6 +98,7 @@ class IAQSimulationModel(Model):
     def _initialize_agents(self):
         """
         Inicializa e distribui agentes nas zonas baseando-se na densidade de ocupação.
+        Garante que agentes não nasçam em obstáculos.
         """
         total_agents_created = 0
         total_occupancy_weight = 0.0
@@ -152,27 +153,38 @@ class IAQSimulationModel(Model):
                     initial_infected=is_infected
                 )
                 
-                # Posicionamento aleatório seguro (tenta encontrar célula vazia)
+                # Posicionamento aleatório seguro
                 placed = False
                 attempts = 0
-                while not placed and attempts < 50:
+                
+                # Tenta 100 vezes encontrar um lugar que não seja parede/móvel
+                while not placed and attempts < 100:
                     rnd_idx = np.random.randint(valid_cells_count)
                     x = zone_cells[1][rnd_idx]
                     y = zone_cells[0][rnd_idx]
                     
-                    if self.grid.is_cell_empty((x, y)):
+                    # Verifica se é andável (não parede)
+                    if self.grid.is_cell_empty((x, y)) and self.physics.is_walkable(x, y):
                         self.grid.place_agent(agent, (x, y))
                         agent.pos = (x, y)
                         placed = True
                     attempts += 1
                 
-                # Se não achou vazia, coloca na última tentada (sobreposição permitida em último caso)
+                # Se não achou lugar ideal, tenta forçar em qualquer lugar válido da zona (último recurso)
                 if not placed:
-                    self.grid.place_agent(agent, (x, y))
-                    agent.pos = (x, y)
+                    for _ in range(20): # Tenta mais algumas vezes sem exigir célula vazia (sobreposição permitida em emergência)
+                        rnd_idx = np.random.randint(valid_cells_count)
+                        x = zone_cells[1][rnd_idx]
+                        y = zone_cells[0][rnd_idx]
+                        if self.physics.is_walkable(x, y):
+                            self.grid.place_agent(agent, (x, y))
+                            agent.pos = (x, y)
+                            placed = True
+                            break
 
-                self.schedule.add(agent)
-                self.simulation_agents.append(agent)
+                if placed:
+                    self.schedule.add(agent)
+                    self.simulation_agents.append(agent)
             
             total_agents_created += zone_agent_count
         
@@ -239,7 +251,6 @@ class IAQSimulationModel(Model):
                 if agent.pos:
                     self.grid.remove_agent(agent)
                 self.schedule.remove(agent)
-                # Nota: a remoção da lista principal é feita abaixo
             
             # Atualiza lista principal
             ids_to_remove = set(a.unique_id for a in agents_to_remove)
