@@ -327,6 +327,30 @@ if st.session_state.simulation_model is not None:
                     colorbar=dict(title='CO₂ (ppm)')
                 ))
                 
+                # Plotar Paredes e Móveis
+                if 'obstacle_map' in grids:
+                    obstacles = np.array(grids['obstacle_map'])
+                    
+                    # Paredes (valor 1)
+                    y_wall, x_wall = np.where(obstacles == 1)
+                    fig_map.add_trace(go.Scatter(
+                        x=x_wall, y=y_wall,
+                        mode='markers',
+                        marker=dict(symbol='square', color='black', size=10),
+                        name='Paredes',
+                        hoverinfo='skip'
+                    ))
+                    
+                    # Móveis (valor 2)
+                    y_furn, x_furn = np.where(obstacles == 2)
+                    fig_map.add_trace(go.Scatter(
+                        x=x_furn, y=y_furn,
+                        mode='markers',
+                        marker=dict(symbol='square', color='gray', size=8),
+                        name='Móveis',
+                        hoverinfo='skip'
+                    ))
+                
                 # Adicionar Agentes
                 agents = last_frame.get('agents', {})
                 if agents.get('positions'):
@@ -453,9 +477,10 @@ if st.session_state.simulation_running and not st.session_state.simulation_pause
             
             st.session_state.simulation_history.append({
                 'time': model.time,
-                'metrics': model.current_metrics.copy() 
+                'metrics': model.current_metrics.copy()
             })
             
+            # Rerun para atualizar a tela
             st.rerun()
             
         except Exception as e:
