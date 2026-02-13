@@ -26,8 +26,12 @@ wheels/
 
 # Virtual Environments
 venv/
+.venv
 env/
 ENV/
+
+# Testes
+.pytest_cache
 
 # Streamlit
 .streamlit/
