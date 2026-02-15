@@ -19,7 +19,12 @@
         "infected": 1,
         "activity": "heavy",
         "mask_compliance": 0.0,
-        "mask_efficiency": 0.0
+        "mask_efficiency": 0.0,
+        "profile_distribution": {
+            "athlete_social": 0.5,
+            "athlete_treadmill": 0.3,
+            "athlete_isolate": 0.2
+        }
     },
     "obstacles": [
         {

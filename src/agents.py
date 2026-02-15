@@ -8,6 +8,7 @@ e máquinas de estado para movimentação realista.
 Dependências:
 - mesa: Framework de ABM.
 - src.config: Constantes científicas e definições de tipos.
+- src.behaviors: Padrão Strategy para decisão de movimento.
 """
 
 import logging
@@ -18,6 +19,7 @@ from typing import Tuple, Optional, Dict, Any
 from mesa import Agent
 import numpy as np
 
+from behaviors import BehaviorFactory
 from config import (
     AgentState,
     ActivityLevel,
@@ -48,7 +50,8 @@ class HumanAgent(Agent):
         model: Any,
         pos: Tuple[int, int],
         agent_config: AgentsConfig,
-        initial_state: AgentState = AgentState.SUSCEPTIBLE
+        initial_state: AgentState = AgentState.SUSCEPTIBLE,
+        profile_type: str = "student_focused"  # Valor default para compatibilidade
     ):
         """
         Inicializa o agente humano.
@@ -59,9 +62,11 @@ class HumanAgent(Agent):
             pos: Posição inicial.
             agent_config: Configuração de agentes do cenário (AgentsConfig).
             initial_state: Estado inicial (padrão SUSCEPTIBLE).
+            profile_type: Identificador do perfil comportamental (Strategy).
         """
         super().__init__(unique_id, model)
         self.pos = pos
+        self.config = agent_config # Guarda config para acesso futuro das estratégias
         
         # --- Propriedades Epidemiológicas ---
         self.state = initial_state
@@ -84,10 +89,14 @@ class HumanAgent(Agent):
         self.wears_mask = random.random() < agent_config.mask_compliance
         self.mask_efficiency = agent_config.mask_efficiency if self.wears_mask else 0.0
 
-        # --- Comportamento/Movimento ---
-        # Define um alvo de movimento (ex: mesa de trabalho, equipamento)
+        # --- Comportamento/Movimento (Strategy Pattern) ---
+        # Injeta a lógica de decisão baseada no perfil (Arquétipo)
+        # O agente delega a decisão de "onde ir" para esta classe
+        self.behavior = BehaviorFactory.create(profile_type, self)
+
+        # Variáveis de estado de movimento (usadas pelas estratégias)
         self.target_pos: Optional[Tuple[int, int]] = None
-        self.movement_state = "WANDERING" # WANDERING, WORKING, RESTING
+        self.movement_state = "WORKING" 
         self.ticks_in_state = 0
 
     def step(self):
@@ -95,14 +104,19 @@ class HumanAgent(Agent):
         Executa um passo de simulação do agente.
         Ordem: 
         1. Atualizar Fisiologia (Carga Viral/Recuperação).
-        2. Movimentação (Comportamento).
+        2. Movimentação (Delegada ao Comportamento).
         """
         # Atualiza dinâmica viral se infectado
         if self.state == AgentState.INFECTED:
             self._update_viral_dynamics()
 
-        # Executa movimentação complexa
-        self._execute_movement_logic()
+        # Executa movimentação baseada na estratégia injetada
+        # 1. Pede ao cérebro (Behavior) para onde ir
+        new_pos = self.behavior.decide_movement()
+        
+        # 2. Se o cérebro decidiu mover, tenta executar
+        if new_pos and self._is_cell_available(new_pos):
+            self.model.grid.move_agent(self, new_pos)
 
     # ========================================================================
     # LÓGICA EPIDEMIOLÓGICA (PÚBLICA)
@@ -112,7 +126,7 @@ class HumanAgent(Agent):
         """
         Calcula a emissão instantânea de quanta viral por segundo.
         
-        Fórmula: (EmissãoBase / 3600) * CargaViral(t) * (1 - EficiênciaMascara)
+        Fórmula: (EmissãoBase / 3600) * CargaViral(t) * (1 - EficiênciaMascara) * MultiplicadorComportamental
         
         Returns:
             float: Quanta emitidos por segundo neste passo.
@@ -123,11 +137,13 @@ class HumanAgent(Agent):
         # Conversão hora -> segundo
         emission_per_second = self.emission_rate_base / 3600.0
         
+        # Obtém multiplicador dinâmico do comportamento (ex: falando alto = 5x)
+        behavior_multiplier = self.behavior.get_emission_multiplier()
+        
         # Fator de redução da máscara (na exalação)
-        # Assumindo eficiência simétrica para simplificação, ou conforme literatura
         mask_factor = 1.0 - self.mask_efficiency
         
-        return emission_per_second * self.viral_load * mask_factor
+        return emission_per_second * self.viral_load * mask_factor * behavior_multiplier
 
     def inhale(self, concentration_quanta_m3: float, dt_seconds: float):
         """
@@ -143,10 +159,7 @@ class HumanAgent(Agent):
         # Conversão do tempo para horas (taxas respiratórias são m³/h)
         dt_hours = dt_seconds / 3600.0
         
-        # Proteção da máscara na inalação
-        # Nota: O prompt pediu (1 - mask_efficiency/2), mas para ser rigoroso
-        # com a literatura, máscaras N95 filtram 95% na entrada. 
-        # Seguirei a instrução do prompt para compliance com o requisito.
+        # Proteção da máscara na inalação (50% da eficiência nominal)
         protection_factor = 1.0 - (self.mask_efficiency / 2.0)
         
         # Dose = C * Q * t * Proteção
@@ -158,31 +171,101 @@ class HumanAgent(Agent):
         self._attempt_infection()
 
     # ========================================================================
+    # SENSORES E ATUADORES (USADOS PELOS BEHAVIORS)
+    # ========================================================================
+
+    def _is_cell_available(self, pos: Tuple[int, int]) -> bool:
+        """Valida se uma célula está livre (sem parede, sem gente)."""
+        # 1. Validação Estática (Environment Facade)
+        if not self.model.environment.is_valid_move(pos):
+            return False
+
+        # 2. Validação Dinâmica (Mesa Grid)
+        if not self.model.grid.is_cell_empty(pos):
+             return False
+             
+        return True
+
+    def _random_move_in_radius(self, radius: int) -> Optional[Tuple[int, int]]:
+        """Tenta encontrar um destino aleatório válido dentro de um raio R."""
+        # Tenta 5 vezes encontrar um lugar válido
+        for _ in range(5):
+            dx = random.randint(-radius, radius)
+            dy = random.randint(-radius, radius)
+            target = (self.pos[0] + dx, self.pos[1] + dy)
+            
+            if self._is_cell_available(target):
+                return target
+        return None
+
+    def _move_towards_density(self) -> Optional[Tuple[int, int]]:
+        """Retorna a célula vizinha que aproxima o agente da maior aglomeração."""
+        neighbors = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
+        best_pos = None
+        max_density = -1
+        
+        for pos in neighbors:
+            if not self._is_cell_available(pos):
+                continue
+                
+            # Conta vizinhos dessa célula candidata (look-ahead)
+            count = len(self.model.grid.get_neighbors(pos, moore=True, include_center=False, radius=1))
+            if count > max_density:
+                max_density = count
+                best_pos = pos
+                
+        return best_pos
+
+    def _move_away_from_density(self) -> Optional[Tuple[int, int]]:
+        """Retorna a célula vizinha que afasta o agente de aglomerações."""
+        neighbors = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
+        best_pos = None
+        min_density = 999
+        
+        for pos in neighbors:
+            if not self._is_cell_available(pos):
+                continue
+                
+            count = len(self.model.grid.get_neighbors(pos, moore=True, include_center=False, radius=1))
+            if count < min_density:
+                min_density = count
+                best_pos = pos
+                
+        return best_pos
+        
+    def _get_next_step_towards(self, target: Tuple[int, int]) -> Tuple[int, int]:
+        """Calcula próximo passo (Heurística Chebyshev)."""
+        x, y = self.pos
+        tx, ty = target
+        dx = np.sign(tx - x)
+        dy = np.sign(ty - y)
+        return (x + dx, y + dy)
+    
+    # ========================================================================
     # LÓGICA INTERNA (PRIVADA)
     # ========================================================================
 
     def _attempt_infection(self):
-        """
-        Avalia a probabilidade de infecção baseada na dose acumulada (Wells-Riley).
-        """
-        if self.accumulated_dose <= 0:
-            return
+        """Avalia probabilidade de infecção (Wells-Riley)."""
+        if self.accumulated_dose <= 0: return
 
-        # Modelo Exponencial de Dose-Resposta
-        # P = 1 - exp(-Dose / ID50)
+        # Modelo Exponencial: P = 1 - exp(-Dose / ID50)
         infection_prob = 1.0 - math.exp(-self.accumulated_dose / DiseaseParams.ID50)
         
-        # Sorteio de Bernoulli
         if random.random() < infection_prob:
             self._become_infected()
 
     def _become_infected(self):
-        """Transiciona o agente para o estado INFECTED."""
+        """Transiciona para estado infectado e loga o evento."""
         self.state = AgentState.INFECTED
-        self.infection_time = self.model.time  # Tempo atual da simulação em segundos
-        self.viral_load = 0.1 # Inicia baixo e sobe
+        self.infection_time = self.model.time
+        self.viral_load = 0.1
         
         logger.info(f"Agente {self.unique_id} infectado na posição {self.pos}. Dose: {self.accumulated_dose:.4f}")
+        
+        # Log centralizado no modelo para Rastreamento de Contatos
+        if hasattr(self.model, "log_infection"):
+            self.model.log_infection(self)
 
     def _update_viral_dynamics(self):
         """
@@ -217,17 +300,17 @@ class HumanAgent(Agent):
             logger.info(f"Agente {self.unique_id} recuperado.")
 
     def _get_emission_rate_base(self, activity: ActivityLevel) -> float:
-        """Mapeia ActivityLevel para constantes de EmissionRates (quanta/h)."""
+        """Mapeia ActivityLevel para constantes."""
         mapping = {
             ActivityLevel.SEDENTARY: EmissionRates.SEATED_QUIET,
-            ActivityLevel.LIGHT: EmissionRates.TALKING, # Assumindo leve conversação/movimento
+            ActivityLevel.LIGHT: EmissionRates.TALKING,
             ActivityLevel.MODERATE: EmissionRates.EXERCISE_LIGHT,
             ActivityLevel.HEAVY: EmissionRates.EXERCISE_HEAVY
         }
         return mapping.get(activity, EmissionRates.SEATED_QUIET)
 
     def _get_respiration_rate(self, activity: ActivityLevel) -> float:
-        """Mapeia ActivityLevel para RespirationRates (m³/h)."""
+        """Mapeia ActivityLevel para constantes."""
         mapping = {
             ActivityLevel.SEDENTARY: RespirationRates.SEDENTARY,
             ActivityLevel.LIGHT: RespirationRates.LIGHT,
@@ -235,99 +318,4 @@ class HumanAgent(Agent):
             ActivityLevel.HEAVY: RespirationRates.HEAVY
         }
         return mapping.get(activity, RespirationRates.SEDENTARY)
-
-    # ========================================================================
-    # LÓGICA DE MOVIMENTAÇÃO (Complexa/Human-like)
-    # ========================================================================
-
-    def _execute_movement_logic(self):
-        """
-        Implementa uma máquina de estados finitos para movimentação.
-        Simula: Trabalho -> Pausa -> Socialização -> Trabalho.
-        """
-        # Se o modelo não tiver grid definido ainda (teste unitário), pula
-        if not hasattr(self.model, "grid") or not self.model.grid:
-            return
-
-        self.ticks_in_state += 1
-        
-        # 1. Definição de Destinos (Se não tiver um)
-        if self.target_pos is None:
-            self._pick_new_target()
-
-        # 2. Movimento passo a passo (Pathfinding simples)
-        if self.target_pos:
-            next_step = self._get_next_step_towards(self.target_pos)
-            
-            # Verifica se a célula está livre (sem outros agentes)
-            # O Grid do Mesa lida com isso se for 'SingleGrid', mas assumimos 'MultiGrid'
-            # Para realismo, evitamos sobreposição
-            if self._is_cell_available(next_step):
-                self.model.grid.move_agent(self, next_step)
-                
-            # Chegou no destino?
-            if self.pos == self.target_pos:
-                self.target_pos = None # Aguarda no local (Working/Exercising)
-                
-    def _pick_new_target(self):
-        """O agente pede ao ambiente um lugar para ir."""
-        # Ex: "Quero uma mesa"
-        target = self.model.environment.get_random_poi("furniture")
-        
-        if target:
-            self.target_pos = target
-        else:
-            self._random_move()
-
-    def _get_next_step_towards(self, target: Tuple[int, int]) -> Tuple[int, int]:
-        """Calcula a próxima célula na direção do alvo (Heurística Chebyshev)."""
-        x, y = self.pos
-        tx, ty = target
-        
-        dx = np.sign(tx - x)
-        dy = np.sign(ty - y)
-        
-        return (x + dx, y + dy)
-
-    def _is_cell_available(self, pos: Tuple[int, int]) -> bool:
-        """
-        Valida se uma célula está livre para ocupação.
-        """
-        # 1. Validação Estática (Environment Facade)
-        # Verifica limites do mapa e obstáculos fixos (paredes/colunas)
-        if not self.model.environment.is_valid_move(pos):
-            return False
-
-        # 2. Validação Dinâmica (Mesa Grid)
-        # Verifica se já existe outro agente ocupando a célula
-        if not self.model.grid.is_cell_empty(pos):
-             return False
-             
-        return True
-
-    def _random_move(self):
-        """
-        Realiza um movimento aleatório local (fallback).
-        
-        Lógica:
-        1. Obtém vizinhos imediatos (Moore neighborhood).
-        2. Filtra posições usando a fachada de ambiente (Environment) e o Grid.
-        3. Escolhe aleatoriamente e move.
-        """
-        # Obtém coordenadas vizinhas (8 direções)
-        possible_steps = self.model.grid.get_neighborhood(
-            self.pos, 
-            moore=True, 
-            include_center=False
-        )
-
-        # Filtra passos válidos usando o método auxiliar que consulta o Environment
-        valid_steps = [
-            pos for pos in possible_steps 
-            if self._is_cell_available(pos)
-        ]
-
-        # Se houver pelo menos um passo válido, move
-        if valid_steps:
-            new_pos = random.choice(valid_steps)
-            self.model.grid.move_agent(self, new_pos)
+    

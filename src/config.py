@@ -26,7 +26,7 @@ from pathlib import Path
 # ============================================================================
 
 AIR_DENSITY = 1.225  # kg/m³ (ISA Standard)
-DEFAULT_DIFFUSION_COEFF = 1e-6  # m²/s
+DEFAULT_DIFFUSION_COEFF = 0.25 # 1e-6 m²/s
 
 # ============================================================================
 # 2. ENUMS (Domínio Discreto)
@@ -96,7 +96,7 @@ class PhysicsConfig:
     room_width_m: float
     room_height_m: float  # Profundidade (Y)
     ceiling_height_m: float
-    cell_size_m: float = 0.5
+    cell_size_m: float = 0.25
     total_volume_m3: float = field(init=False)
 
     def __post_init__(self):
@@ -118,6 +118,7 @@ class AgentsConfig:
     activity_level: ActivityLevel
     mask_compliance: float  # 0.0 a 1.0
     mask_efficiency: float  # 0.0 a 1.0
+    profile_distribution: Dict[str, float] = field(default_factory=dict)
 
 @dataclass
 class ObstacleConfig:
@@ -156,7 +157,7 @@ class ScenarioConfig:
                 room_width_m=phy_data['width'],
                 room_height_m=phy_data['height'],
                 ceiling_height_m=phy_data['ceiling'],
-                cell_size_m=phy_data.get('cell_size', 0.5)
+                cell_size_m=phy_data.get('cell_size', 0.25)
             )
 
             # 2. Hidrata Ventilation
@@ -232,7 +233,12 @@ def get_default_school_config() -> ScenarioConfig:
             initial_infected=1,
             activity_level=ActivityLevel.LIGHT,
             mask_compliance=0.5,
-            mask_efficiency=0.4
+            mask_efficiency=0.4,
+            profile_distribution={
+                "student_focused": 0.7,  # 70% da sala quietos
+                "student_social": 0.2,   # 20% interagem nos intervalos
+                "teacher": 0.1           # ~3 professores (ou 1 se N for pequeno)
+            }
         ),
         obstacles=[
             ObstacleConfig("teacher_desk", 4.0, 1.0, 1.6, 0.8, "furniture"),
@@ -242,6 +248,7 @@ def get_default_school_config() -> ScenarioConfig:
     )
 
 def get_default_office_config() -> ScenarioConfig:
+    """Gera a configuração padrão de escritório corporativo."""
     return ScenarioConfig(
         name="Escritório Open Space",
         description="Ambiente corporativo climatizado",
@@ -253,7 +260,11 @@ def get_default_office_config() -> ScenarioConfig:
             initial_infected=1,
             activity_level=ActivityLevel.SEDENTARY,
             mask_compliance=0.2,
-            mask_efficiency=0.5
+            mask_efficiency=0.5,
+            profile_distribution={
+                "worker_focused": 0.8,  # Maioria trabalhando
+                "worker_social": 0.2    # Minoria conversando/circulando
+            }
         ),
         obstacles=[
              ObstacleConfig("island_1", 2.0, 2.0, 4.0, 3.0, "furniture")
@@ -261,6 +272,7 @@ def get_default_office_config() -> ScenarioConfig:
     )
 
 def get_default_gym_config() -> ScenarioConfig:
+    """Gera a configuração padrão de academia."""
     return ScenarioConfig(
         name="Academia Crossfit",
         description="Alta emissão viral e respiração intensa",
@@ -272,7 +284,12 @@ def get_default_gym_config() -> ScenarioConfig:
             initial_infected=1,
             activity_level=ActivityLevel.HEAVY,
             mask_compliance=0.0,
-            mask_efficiency=0.0
+            mask_efficiency=0.0,
+            profile_distribution={
+                "athlete_social": 0.5,    # 50% em aulas/grupos
+                "athlete_treadmill": 0.3, # 30% nas esteiras (super-emissores fixos)
+                "athlete_isolate": 0.2    # 20% isolados nos pesos
+            }
         ),
         obstacles=[
             ObstacleConfig("rig", 8.0, 4.0, 4.0, 4.0, "equipment")

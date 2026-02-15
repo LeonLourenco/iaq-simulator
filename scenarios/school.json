@@ -19,7 +19,12 @@
         "infected": 1,
         "activity": "light",
         "mask_compliance": 0.5,
-        "mask_efficiency": 0.4
+        "mask_efficiency": 0.4,
+        "profile_distribution": {
+            "student_focused": 0.7,
+            "student_social": 0.2,
+            "teacher": 0.1
+        }
     },
     "obstacles": [
         {

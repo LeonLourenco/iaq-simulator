@@ -19,7 +19,11 @@
         "infected": 1,
         "activity": "sedentary",
         "mask_compliance": 0.2,
-        "mask_efficiency": 0.5
+        "mask_efficiency": 0.5,
+        "profile_distribution": {
+            "worker_focused": 0.8,
+            "worker_social": 0.2
+        }
     },
     "obstacles": [
         {
