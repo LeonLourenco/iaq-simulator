@@ -1,0 +1,61 @@
+{
+    "name": "Escola Padrão UFRPE",
+    "description": "Sala de aula típica com ventilação híbrida e 25 alunos. Layout em fileiras.",
+    "duration_hours": 4.0,
+    "physics": {
+        "width": 10.0,
+        "height": 8.0,
+        "ceiling": 3.0,
+        "cell_size": 0.5
+    },
+    "ventilation": {
+        "ach": 4.5,
+        "type": "hybrid",
+        "efficiency": 0.9,
+        "merv": 8
+    },
+    "agents": {
+        "total": 25,
+        "infected": 1,
+        "activity": "light",
+        "mask_compliance": 0.5,
+        "mask_efficiency": 0.4
+    },
+    "obstacles": [
+        {
+            "id": "teacher_desk",
+            "type": "furniture",
+            "x": 4.0, "y": 1.0, "width": 1.6, "height": 0.8
+        },
+        {
+            "id": "row1_left",
+            "type": "furniture",
+            "x": 1.0, "y": 3.0, "width": 3.0, "height": 0.6
+        },
+        {
+            "id": "row1_right",
+            "type": "furniture",
+            "x": 6.0, "y": 3.0, "width": 3.0, "height": 0.6
+        },
+        {
+            "id": "row2_left",
+            "type": "furniture",
+            "x": 1.0, "y": 4.5, "width": 3.0, "height": 0.6
+        },
+        {
+            "id": "row2_right",
+            "type": "furniture",
+            "x": 6.0, "y": 4.5, "width": 3.0, "height": 0.6
+        },
+        {
+            "id": "row3_left",
+            "type": "furniture",
+            "x": 1.0, "y": 6.0, "width": 3.0, "height": 0.6
+        },
+        {
+            "id": "row3_right",
+            "type": "furniture",
+            "x": 6.0, "y": 6.0, "width": 3.0, "height": 0.6
+        }
+    ]
+}

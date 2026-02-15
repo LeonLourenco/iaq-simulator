@@ -1,0 +1,51 @@
+{
+    "name": "Escritório Corporativo Open Space",
+    "description": "Ambiente climatizado com ilhas de trabalho e sala de reunião.",
+    "duration_hours": 8.0,
+    "physics": {
+        "width": 15.0,
+        "height": 10.0,
+        "ceiling": 2.8,
+        "cell_size": 0.5
+    },
+    "ventilation": {
+        "ach": 3.0,
+        "type": "mechanical",
+        "efficiency": 1.0,
+        "merv": 11
+    },
+    "agents": {
+        "total": 20,
+        "infected": 1,
+        "activity": "sedentary",
+        "mask_compliance": 0.2,
+        "mask_efficiency": 0.5
+    },
+    "obstacles": [
+        {
+            "id": "island_workstation_1",
+            "type": "furniture",
+            "x": 2.0, "y": 2.0, "width": 4.0, "height": 3.0
+        },
+        {
+            "id": "island_workstation_2",
+            "type": "furniture",
+            "x": 8.0, "y": 2.0, "width": 4.0, "height": 3.0
+        },
+        {
+            "id": "meeting_room_wall_vertical",
+            "type": "wall",
+            "x": 10.0, "y": 6.0, "width": 0.2, "height": 4.0
+        },
+        {
+            "id": "meeting_room_wall_horizontal",
+            "type": "wall",
+            "x": 10.0, "y": 6.0, "width": 5.0, "height": 0.2
+        },
+        {
+            "id": "meeting_table",
+            "type": "furniture",
+            "x": 11.5, "y": 7.5, "width": 2.5, "height": 1.5
+        }
+    ]
+}

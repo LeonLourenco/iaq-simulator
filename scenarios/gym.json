@@ -1,0 +1,46 @@
+{
+    "name": "Box de Crossfit",
+    "description": "Galpão com pé direito alto, atividade intensa e alta emissão de aerossóis.",
+    "duration_hours": 2.0,
+    "physics": {
+        "width": 20.0,
+        "height": 12.0,
+        "ceiling": 4.5,
+        "cell_size": 1.0
+    },
+    "ventilation": {
+        "ach": 6.0,
+        "type": "mechanical",
+        "efficiency": 0.8,
+        "merv": 8
+    },
+    "agents": {
+        "total": 15,
+        "infected": 1,
+        "activity": "heavy",
+        "mask_compliance": 0.0,
+        "mask_efficiency": 0.0
+    },
+    "obstacles": [
+        {
+            "id": "central_rig",
+            "type": "equipment",
+            "x": 8.0, "y": 4.0, "width": 4.0, "height": 4.0
+        },
+        {
+            "id": "treadmill_zone",
+            "type": "equipment",
+            "x": 1.0, "y": 1.0, "width": 3.0, "height": 8.0
+        },
+        {
+            "id": "weight_racks",
+            "type": "equipment",
+            "x": 16.0, "y": 2.0, "width": 3.0, "height": 8.0
+        },
+        {
+            "id": "reception_desk",
+            "type": "furniture",
+            "x": 1.0, "y": 10.5, "width": 3.0, "height": 1.0
+        }
+    ]
+}

@@ -1,0 +1,9 @@
+[Exp 1 (Validação)] Pico de Infectados: 20 alunos
+[Exp 1 (Validação)] Tempo do Pico: 10.6 horas
+[Exp 1 (Validação)] Taxa de Ataque Final: 40.0%
+[Exp 2 (Ventilação)] Dose Média (ACH 0.5): 0.0310 q
+[Exp 2 (Ventilação)] Dose Média (ACH 10.0): 0.0006 q
+[Exp 2 (Ventilação)] Eficácia da Redução: 98.2%
+[Exp 3 (Espacial)] Concentração Máxima Local: 0.00 quanta/m³
+[Exp 4 (Máscaras)] Casos (Sem Máscara): 4.6
+[Exp 4 (Máscaras)] Casos (N95): 0.0
