@@ -1,321 +1,245 @@
 """
-Módulo de Agentes Epidemiológicos (HumanAgent).
+IAQ Simulator - Agents Module
+=============================
 
-Implementa a lógica comportamental e fisiológica dos ocupantes,
-incluindo modelos de infecção (Wells-Riley), evolução de carga viral
-e máquinas de estado para movimentação realista.
+Este módulo define a entidade biológica (BioAgent).
+Ele é responsável por:
+1. Comportamento Social: Ir para a carteira, socializar no intervalo, distanciamento.
+2. Fisiologia: Taxa de respiração, emissão de CO2 e Vírus (Quanta).
+3. Epidemiologia: Modelo de Dose-Resposta (Wells-Riley) para infecção.
 
-Dependências:
-- mesa: Framework de ABM.
-- src.config: Constantes científicas e definições de tipos.
-- src.behaviors: Padrão Strategy para decisão de movimento.
+Autor: Leon Lourenço (UFRPE)
+Licença: MIT
 """
 
-import logging
-import math
-import random
-from typing import Tuple, Optional, Dict, Any
-
-from mesa import Agent
 import numpy as np
 
-from behaviors import BehaviorFactory
-from config import (
-    AgentState,
-    ActivityLevel,
-    DiseaseParams,
-    EmissionRates,
-    RespirationRates,
-    AgentsConfig
-)
+# --- CONSTANTES DE CALIBRAÇÃO (Baseadas em Literatura/Ajuste Fino) ---
+# Velocidade média de caminhada (m/s convertida para células/step)
+# Assumindo dt ~ 1s e célula ~ 0.1m -> 0.6 m/s = 6 células/s
+BASE_SPEED = 0.6 
 
-# Configuração de Logger
-logger = logging.getLogger(__name__)
+# Taxa de Emissão de CO2 (Arbitrária para gerar PPM realista no LBM)
+# Valor alto (100.0) compensa a difusão numérica para atingir ~1000-2000 ppm
+BASE_CO2_RATE = 100.0  
 
-class HumanAgent(Agent):
+# Carga Viral (Quanta/h)
+# Respirando (Aula) vs Falando (Intervalo)
+BASE_QUANTA_BREATH = 10.0
+BASE_QUANTA_SPEAK = 50.0
+
+# Resistência Imunológica (k)
+# Probabilidade P = 1 - exp(-Dose/k). Quanto maior k, mais difícil infectar.
+# Calibrado para gerar ~30-50% de ataque em 4h sem ventilação.
+IMMUNITY_FACTOR = 100.0 
+
+class BioAgent:
     """
-    Agente humano com fisiologia respiratória e comportamento social.
-
-    Atributos:
-        unique_id (int): Identificador único.
-        pos (Tuple[int, int]): Posição (x, y) no grid.
-        state (AgentState): Estado epidemiológico (S, I, R).
-        viral_load (float): Carga viral normalizada (0.0 a 1.0).
-        accumulated_dose (float): Dose viral acumulada em quanta.
+    Agente inteligente que simula um ocupante da sala de aula.
     """
-
-    def __init__(
-        self,
-        unique_id: int,
-        model: Any,
-        pos: Tuple[int, int],
-        agent_config: AgentsConfig,
-        initial_state: AgentState = AgentState.SUSCEPTIBLE,
-        profile_type: str = "student_focused"  # Valor default para compatibilidade
-    ):
+    def __init__(self, unique_id, pos_x, pos_y, desk_x, desk_y, room_dims, time_scale=1.0, initial_status="Suscetivel"):
         """
-        Inicializa o agente humano.
-
+        Inicializa o agente.
+        
         Args:
-            unique_id: ID do agente.
-            model: Referência ao modelo Mesa (IAQModel).
-            pos: Posição inicial.
-            agent_config: Configuração de agentes do cenário (AgentsConfig).
-            initial_state: Estado inicial (padrão SUSCEPTIBLE).
-            profile_type: Identificador do perfil comportamental (Strategy).
+            unique_id (int): Identificador único.
+            pos_x, pos_y (float): Posição inicial.
+            desk_x, desk_y (float): Posição da carteira (destino principal).
+            room_dims (tuple): (NX, NY) Dimensões da sala.
+            time_scale (float): Fator de ajuste temporal (dt).
+            initial_status (str): "Suscetivel", "Infectado" ou "Assintomatico".
         """
-        super().__init__(unique_id, model)
-        self.pos = pos
-        self.config = agent_config # Guarda config para acesso futuro das estratégias
+        self.id = unique_id
+        self.nx, self.ny = room_dims
         
-        # --- Propriedades Epidemiológicas ---
-        self.state = initial_state
-        self.infection_time: Optional[float] = 0.0 if initial_state == AgentState.INFECTED else None
-        self.recovery_time: Optional[float] = None
-        self.accumulated_dose: float = 0.0
-        self.viral_load: float = 0.0
+        # Coordenadas Contínuas (Float)
+        self.x = float(pos_x)
+        self.y = float(pos_y)
         
-        # Se começar infectado, inicializa carga viral no início da curva
-        if self.state == AgentState.INFECTED:
-            self.viral_load = 0.1  # Início da infecção
+        # Destinos
+        self.desk_x = float(desk_x)
+        self.desk_y = float(desk_y)
+        self.target_x, self.target_y = self.desk_x, self.desk_y
+        
+        # Máquina de Estados Comportamental
+        self.state_behav = "ENTRANDO" # ENTRANDO -> SENTADO <-> SOCIALIZANDO
+        
+        # Física
+        self.speed = BASE_SPEED / time_scale
+        self.time_scale = time_scale
+        
+        # Epidemiologia
+        self.status_saude = initial_status
+        self.mask_efficiency = 0.50 # Eficiência da máscara (se implementado uso universal)
+        self.accumulated_dose = 0.0 # Dose viral inalada acumulada
+        
+        # Jitter (Movimento aleatório na carteira para não parecer estátua)
+        self.jitter_intensity = 0.2
+
+    def step_behavior(self, current_step, total_steps, walls_mask, all_agents):
+        """
+        Atualiza a lógica do agente para o passo atual.
+        1. Decide o objetivo (Target).
+        2. Executa movimento e colisão.
+        """
+        # --- 1. CÉREBRO: Decisão de Destino ---
+        self._update_state_machine(current_step, total_steps)
+        
+        # --- 2. CORPO: Movimentação ---
+        self._move_and_collide(walls_mask, all_agents)
+
+    def _update_state_machine(self, step, total):
+        """Define o estado comportamental baseado no tempo da aula."""
+        
+        # Estado 1: Entrando na sala
+        if self.state_behav == "ENTRANDO":
+            dist = np.hypot(self.x - self.desk_x, self.y - self.desk_y)
+            # Se chegou perto da mesa (2 células), senta
+            if dist < 2.0: 
+                self.state_behav = "SENTADO"
             
-        # --- Propriedades Fisiológicas ---
-        self.activity_level = agent_config.activity_level
-        self.emission_rate_base = self._get_emission_rate_base(self.activity_level)
-        self.respiration_rate = self._get_respiration_rate(self.activity_level)
-        
-        # --- Equipamento de Proteção (EPI) ---
-        # Determina uso de máscara baseado no compliance do cenário (Bernoulli trial)
-        self.wears_mask = random.random() < agent_config.mask_compliance
-        self.mask_efficiency = agent_config.mask_efficiency if self.wears_mask else 0.0
-
-        # --- Comportamento/Movimento (Strategy Pattern) ---
-        # Injeta a lógica de decisão baseada no perfil (Arquétipo)
-        # O agente delega a decisão de "onde ir" para esta classe
-        self.behavior = BehaviorFactory.create(profile_type, self)
-
-        # Variáveis de estado de movimento (usadas pelas estratégias)
-        self.target_pos: Optional[Tuple[int, int]] = None
-        self.movement_state = "WORKING" 
-        self.ticks_in_state = 0
-
-    def step(self):
-        """
-        Executa um passo de simulação do agente.
-        Ordem: 
-        1. Atualizar Fisiologia (Carga Viral/Recuperação).
-        2. Movimentação (Delegada ao Comportamento).
-        """
-        # Atualiza dinâmica viral se infectado
-        if self.state == AgentState.INFECTED:
-            self._update_viral_dynamics()
-
-        # Executa movimentação baseada na estratégia injetada
-        # 1. Pede ao cérebro (Behavior) para onde ir
-        new_pos = self.behavior.decide_movement()
-        
-        # 2. Se o cérebro decidiu mover, tenta executar
-        if new_pos and self._is_cell_available(new_pos):
-            self.model.grid.move_agent(self, new_pos)
-
-    # ========================================================================
-    # LÓGICA EPIDEMIOLÓGICA (PÚBLICA)
-    # ========================================================================
-
-    def calculate_emission_quanta_per_s(self) -> float:
-        """
-        Calcula a emissão instantânea de quanta viral por segundo.
-        
-        Fórmula: (EmissãoBase / 3600) * CargaViral(t) * (1 - EficiênciaMascara) * MultiplicadorComportamental
-        
-        Returns:
-            float: Quanta emitidos por segundo neste passo.
-        """
-        if self.state != AgentState.INFECTED:
-            return 0.0
-        
-        # Conversão hora -> segundo
-        emission_per_second = self.emission_rate_base / 3600.0
-        
-        # Obtém multiplicador dinâmico do comportamento (ex: falando alto = 5x)
-        behavior_multiplier = self.behavior.get_emission_multiplier()
-        
-        # Fator de redução da máscara (na exalação)
-        mask_factor = 1.0 - self.mask_efficiency
-        
-        return emission_per_second * self.viral_load * mask_factor * behavior_multiplier
-
-    def inhale(self, concentration_quanta_m3: float, dt_seconds: float):
-        """
-        Processa a inalação de ar contaminado e acumula dose viral.
-
-        Args:
-            concentration_quanta_m3: Concentração local de vírus (quanta/m³).
-            dt_seconds: Passo de tempo da simulação física em segundos.
-        """
-        if self.state != AgentState.SUSCEPTIBLE:
-            return
-
-        # Conversão do tempo para horas (taxas respiratórias são m³/h)
-        dt_hours = dt_seconds / 3600.0
-        
-        # Proteção da máscara na inalação (50% da eficiência nominal)
-        protection_factor = 1.0 - (self.mask_efficiency / 2.0)
-        
-        # Dose = C * Q * t * Proteção
-        dose_step = (
-            concentration_quanta_m3 * self.respiration_rate * dt_hours * protection_factor
-        )
-        
-        self.accumulated_dose += dose_step
-        self._attempt_infection()
-
-    # ========================================================================
-    # SENSORES E ATUADORES (USADOS PELOS BEHAVIORS)
-    # ========================================================================
-
-    def _is_cell_available(self, pos: Tuple[int, int]) -> bool:
-        """Valida se uma célula está livre (sem parede, sem gente)."""
-        # 1. Validação Estática (Environment Facade)
-        if not self.model.environment.is_valid_move(pos):
-            return False
-
-        # 2. Validação Dinâmica (Mesa Grid)
-        if not self.model.grid.is_cell_empty(pos):
-             return False
-             
-        return True
-
-    def _random_move_in_radius(self, radius: int) -> Optional[Tuple[int, int]]:
-        """Tenta encontrar um destino aleatório válido dentro de um raio R."""
-        # Tenta 5 vezes encontrar um lugar válido
-        for _ in range(5):
-            dx = random.randint(-radius, radius)
-            dy = random.randint(-radius, radius)
-            target = (self.pos[0] + dx, self.pos[1] + dy)
+        # Estado 2: Assistindo Aula
+        elif self.state_behav == "SENTADO":
+            # Define o intervalo (Break) entre 45% e 55% do tempo total
+            start_break = 0.45 * total
+            end_break = 0.55 * total
             
-            if self._is_cell_available(target):
-                return target
-        return None
-
-    def _move_towards_density(self) -> Optional[Tuple[int, int]]:
-        """Retorna a célula vizinha que aproxima o agente da maior aglomeração."""
-        neighbors = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
-        best_pos = None
-        max_density = -1
-        
-        for pos in neighbors:
-            if not self._is_cell_available(pos):
-                continue
+            if start_break < step < end_break:
+                self.state_behav = "SOCIALIZANDO"
+                self._pick_random_spot() # Escolhe um lugar para conversar
+            else:
+                # Mantém na mesa
+                self.target_x, self.target_y = self.desk_x, self.desk_y
                 
-            # Conta vizinhos dessa célula candidata (look-ahead)
-            count = len(self.model.grid.get_neighbors(pos, moore=True, include_center=False, radius=1))
-            if count > max_density:
-                max_density = count
-                best_pos = pos
+                # Micro-movimentos (simula inquietação)
+                if np.random.random() < (0.05 / self.time_scale):
+                    self.x += np.random.uniform(-self.jitter_intensity, self.jitter_intensity)
+                    self.y += np.random.uniform(-self.jitter_intensity, self.jitter_intensity)
+
+        # Estado 3: Intervalo / Socialização
+        elif self.state_behav == "SOCIALIZANDO":
+            # Fim do intervalo? Voltar para mesa.
+            end_break = 0.55 * total
+            if step > end_break:
+                self.state_behav = "ENTRANDO" # Usa lógica de entrar para voltar à mesa
+                self.target_x, self.target_y = self.desk_x, self.desk_y
+            
+            # Dinâmica de Grupo: Muda de lugar a cada X minutos simulados
+            # 50 steps * time_scale
+            change_freq = int(50 * self.time_scale)
+            if step % change_freq == 0:
+                self._pick_random_spot()
+
+    def _pick_random_spot(self):
+        """Escolhe um ponto aleatório na sala (longe das paredes) para socializar."""
+        margin = 10 # Margem de segurança das paredes
+        self.target_x = np.random.randint(margin, self.nx - margin)
+        self.target_y = np.random.randint(margin, self.ny - margin)
+
+    def _move_and_collide(self, walls, agents):
+        """Executa movimento vetorial com repulsão social e colisão com paredes."""
+        # Vetor para o alvo
+        dx = self.target_x - self.x
+        dy = self.target_y - self.y
+        dist = np.hypot(dx, dy)
+        
+        vx, vy = 0.0, 0.0
+        
+        # Se está longe, move-se em direção ao alvo
+        if dist > 0.5:
+            vx = (dx / dist) * self.speed
+            vy = (dy / dist) * self.speed
+
+        # --- Força de Repulsão Social (Evita ficar em cima de outro aluno) ---
+        for other in agents:
+            if other.id != self.id:
+                # Distância euclidiana
+                d_ag = np.hypot(self.x - other.x, self.y - other.y)
+                min_dist = 1.5 # Raio pessoal (1.5 células = 15cm na escala atual, evitar sobreposição exata)
                 
-        return best_pos
+                if d_ag < min_dist and d_ag > 0:
+                    # Vetor de afastamento
+                    push_x = self.x - other.x
+                    push_y = self.y - other.y
+                    # Força inversamente proporcional à distância
+                    factor = (min_dist - d_ag) / min_dist
+                    
+                    vx += push_x * factor * (0.8 / self.time_scale)
+                    vy += push_y * factor * (0.8 / self.time_scale)
 
-    def _move_away_from_density(self) -> Optional[Tuple[int, int]]:
-        """Retorna a célula vizinha que afasta o agente de aglomerações."""
-        neighbors = self.model.grid.get_neighborhood(self.pos, moore=True, include_center=False)
-        best_pos = None
-        min_density = 999
+        # --- Colisão com Paredes (Algoritmo "Slide") ---
+        # Tenta mover em X e Y
+        next_x = self.x + vx
+        next_y = self.y + vy
         
-        for pos in neighbors:
-            if not self._is_cell_available(pos):
-                continue
-                
-            count = len(self.model.grid.get_neighbors(pos, moore=True, include_center=False, radius=1))
-            if count < min_density:
-                min_density = count
-                best_pos = pos
-                
-        return best_pos
-        
-    def _get_next_step_towards(self, target: Tuple[int, int]) -> Tuple[int, int]:
-        """Calcula próximo passo (Heurística Chebyshev)."""
-        x, y = self.pos
-        tx, ty = target
-        dx = np.sign(tx - x)
-        dy = np.sign(ty - y)
-        return (x + dx, y + dy)
-    
-    # ========================================================================
-    # LÓGICA INTERNA (PRIVADA)
-    # ========================================================================
-
-    def _attempt_infection(self):
-        """Avalia probabilidade de infecção (Wells-Riley)."""
-        if self.accumulated_dose <= 0: return
-
-        # Modelo Exponencial: P = 1 - exp(-Dose / ID50)
-        infection_prob = 1.0 - math.exp(-self.accumulated_dose / DiseaseParams.ID50)
-        
-        if random.random() < infection_prob:
-            self._become_infected()
-
-    def _become_infected(self):
-        """Transiciona para estado infectado e loga o evento."""
-        self.state = AgentState.INFECTED
-        self.infection_time = self.model.time
-        self.viral_load = 0.1
-        
-        logger.info(f"Agente {self.unique_id} infectado na posição {self.pos}. Dose: {self.accumulated_dose:.4f}")
-        
-        # Log centralizado no modelo para Rastreamento de Contatos
-        if hasattr(self.model, "log_infection"):
-            self.model.log_infection(self)
-
-    def _update_viral_dynamics(self):
-        """
-        Atualiza a curva de carga viral e verifica recuperação.
-        Baseado em dias desde a infecção.
-        """
-        if self.infection_time is None:
-            return
-
-        # Tempo decorrido em dias
-        seconds_since_infection = self.model.time - self.infection_time
-        days_since_infection = seconds_since_infection / (24 * 3600.0)
-        
-        # Parâmetros da curva
-        peak_day = 4.0
-        end_day = DiseaseParams.INFECTIOUS_DAYS # 12.0
-        
-        if days_since_infection <= peak_day:
-            # Fase Ascendente (0 a 1.0)
-            self.viral_load = days_since_infection / peak_day
-        elif days_since_infection < end_day:
-            # Fase Descendente (1.0 a 0)
-            # Normaliza o tempo restante entre pico e fim
-            remaining_duration = end_day - peak_day
-            elapsed_since_peak = days_since_infection - peak_day
-            self.viral_load = 1.0 - (elapsed_since_peak / remaining_duration)
+        if self._is_valid_position(next_x, next_y, walls):
+            self.x = next_x
+            self.y = next_y
         else:
-            # Recuperação
-            self.viral_load = 0.0
-            self.state = AgentState.RECOVERED
-            self.recovery_time = self.model.time
-            logger.info(f"Agente {self.unique_id} recuperado.")
+            # Se bloqueado diagonalmente, tenta mover apenas em X
+            if self._is_valid_position(next_x, self.y, walls):
+                self.x = next_x
+            # Se bloqueado em X, tenta mover apenas em Y
+            elif self._is_valid_position(self.x, next_y, walls):
+                self.y = next_y
+            # Se bloqueado em tudo, fica parado (paredes absorvem o movimento)
 
-    def _get_emission_rate_base(self, activity: ActivityLevel) -> float:
-        """Mapeia ActivityLevel para constantes."""
-        mapping = {
-            ActivityLevel.SEDENTARY: EmissionRates.SEATED_QUIET,
-            ActivityLevel.LIGHT: EmissionRates.TALKING,
-            ActivityLevel.MODERATE: EmissionRates.EXERCISE_LIGHT,
-            ActivityLevel.HEAVY: EmissionRates.EXERCISE_HEAVY
-        }
-        return mapping.get(activity, EmissionRates.SEATED_QUIET)
+    def _is_valid_position(self, x, y, walls):
+        """Verifica se a coordenada (x,y) está dentro da sala e fora de paredes."""
+        ix, iy = int(x), int(y)
+        # Limites do Grid
+        if 0 <= ix < self.nx and 0 <= iy < self.ny:
+            # Verifica máscara de obstáculos (True = Parede/Mesa)
+            # Nota: Permitimos andar sobre "Mesa" (OBJ_DESK) se necessário, 
+            # mas idealmente o walls_mask passado deve definir onde é proibido pisar.
+            return not walls[iy, ix]
+        return False
 
-    def _get_respiration_rate(self, activity: ActivityLevel) -> float:
-        """Mapeia ActivityLevel para constantes."""
-        mapping = {
-            ActivityLevel.SEDENTARY: RespirationRates.SEDENTARY,
-            ActivityLevel.LIGHT: RespirationRates.LIGHT,
-            ActivityLevel.MODERATE: RespirationRates.MODERATE,
-            ActivityLevel.HEAVY: RespirationRates.HEAVY
-        }
-        return mapping.get(activity, RespirationRates.SEDENTARY)
-    
+    def get_emissions(self):
+        """
+        Calcula a quantidade de contaminantes emitidos neste passo de tempo.
+        Retorna: (Virus_Quanta, CO2_Mass)
+        """
+        # Emissão de CO2 é constante (metabolismo basal ajustado)
+        co2 = BASE_CO2_RATE / self.time_scale
+        
+        virus = 0.0
+        # Apenas infectados emitem vírus
+        if self.status_saude == "Infectado":
+            # Emite mais se estiver socializando (falando) do que sentado (respirando)
+            if self.state_behav == "SOCIALIZANDO":
+                base_v = BASE_QUANTA_SPEAK
+            else:
+                base_v = BASE_QUANTA_BREATH
+            
+            # Ajusta por eficiência da máscara e passo de tempo
+            virus = (base_v / self.time_scale) * (1.0 - self.mask_efficiency) * 0.1
+            
+        return virus, co2
+
+    def update_infection_risk(self, virus_conc_at_pos):
+        """
+        Calcula o risco de infecção baseado na concentração local (Modelo Wells-Riley).
+        
+        Args:
+            virus_conc_at_pos (float): Concentração de quanta/m³ na célula atual do agente.
+        """
+        # Se já é infectado ou assintomático, não faz nada
+        if self.status_saude != "Suscetivel":
+            return
+
+        # Taxa de respiração média ~0.5 m³/h. Ajuste simplificado:
+        # Dose += Concentração * (Fator Respiração / TimeScale)
+        # Fator 0.1 é um escalar empírico para ajustar a magnitude da dose no tempo simulado
+        dose_increment = virus_conc_at_pos * 0.1 
+        self.accumulated_dose += dose_increment
+        
+        # Probabilidade de Infecção P = 1 - exp(-Dose / k)
+        infection_prob = 1.0 - np.exp(-self.accumulated_dose / IMMUNITY_FACTOR)
+        
+        # Sorteio estocástico (Monte Carlo)
+        if np.random.random() < infection_prob:
+            # Transição de Estado: S -> A (Assintomático/Incubando)
+            # Escolhemos "Assintomático" para diferenciar visualmente quem começou doente (I)
+            # e quem pegou na sala (A).
+            self.status_saude = "Assintomatico"

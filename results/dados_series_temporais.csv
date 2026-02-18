@@ -1,0 +1,161 @@
+Run_ID,Cenário,Tempo_Min,Infectados,CO2_PPM,Virus_Quanta
+A_Rep1,A. Hermético (Controle),0,1,400.0521,1.0416667e-05
+A_Rep1,A. Hermético (Controle),60,21,489.00693,0.012913389
+A_Rep1,A. Hermético (Controle),120,21,558.8096,0.02166969
+A_Rep1,A. Hermético (Controle),180,21,613.84015,0.033000927
+A_Rep1,A. Hermético (Controle),240,23,655.34204,0.073287755
+A_Rep1,A. Hermético (Controle),300,25,686.8096,0.10746324
+A_Rep1,A. Hermético (Controle),360,25,711.52637,0.11006469
+A_Rep1,A. Hermético (Controle),420,25,729.80176,0.110524684
+A_Rep2,A. Hermético (Controle),0,1,400.0521,1.0416667e-05
+A_Rep2,A. Hermético (Controle),60,24,488.98514,0.01844534
+A_Rep2,A. Hermético (Controle),120,25,559.07294,0.03599853
+A_Rep2,A. Hermético (Controle),180,25,614.1775,0.05142028
+A_Rep2,A. Hermético (Controle),240,25,655.541,0.09432899
+A_Rep2,A. Hermético (Controle),300,25,686.5701,0.13151594
+A_Rep2,A. Hermético (Controle),360,25,710.86536,0.13622192
+A_Rep2,A. Hermético (Controle),420,25,729.6471,0.13929711
+A_Rep3,A. Hermético (Controle),0,1,400.0521,1.0416667e-05
+A_Rep3,A. Hermético (Controle),60,19,488.98767,0.017357392
+A_Rep3,A. Hermético (Controle),120,22,559.22076,0.035030797
+A_Rep3,A. Hermético (Controle),180,23,614.3323,0.05089464
+A_Rep3,A. Hermético (Controle),240,25,655.55334,0.09386923
+A_Rep3,A. Hermético (Controle),300,25,687.476,0.13099097
+A_Rep3,A. Hermético (Controle),360,25,711.73926,0.13547397
+A_Rep3,A. Hermético (Controle),420,25,728.58356,0.13824253
+A_Rep4,A. Hermético (Controle),0,1,400.0521,1.0416667e-05
+A_Rep4,A. Hermético (Controle),60,23,489.20972,0.018489014
+A_Rep4,A. Hermético (Controle),120,25,559.62994,0.032640267
+A_Rep4,A. Hermético (Controle),180,25,614.78357,0.045906533
+A_Rep4,A. Hermético (Controle),240,25,656.0012,0.057771727
+A_Rep4,A. Hermético (Controle),300,25,686.285,0.06773721
+A_Rep4,A. Hermético (Controle),360,25,709.4473,0.07590646
+A_Rep4,A. Hermético (Controle),420,25,726.1661,0.08256222
+A_Rep5,A. Hermético (Controle),0,1,400.0521,1.0416667e-05
+A_Rep5,A. Hermético (Controle),60,15,489.07812,0.016655298
+A_Rep5,A. Hermético (Controle),120,17,559.4696,0.027505292
+A_Rep5,A. Hermético (Controle),180,19,614.6229,0.040321015
+A_Rep5,A. Hermético (Controle),240,20,655.9211,0.08251049
+A_Rep5,A. Hermético (Controle),300,23,688.3127,0.119287305
+A_Rep5,A. Hermético (Controle),360,24,712.0578,0.122771665
+A_Rep5,A. Hermético (Controle),420,24,727.95807,0.1244326
+B_Rep1,B. Escola Padrão,0,1,400.0521,1.0416667e-05
+B_Rep1,B. Escola Padrão,60,16,436.88638,0.0047858316
+B_Rep1,B. Escola Padrão,120,21,441.34818,0.0043900143
+B_Rep1,B. Escola Padrão,180,21,441.0622,0.0042331074
+B_Rep1,B. Escola Padrão,240,21,440.72964,0.01810073
+B_Rep1,B. Escola Padrão,300,25,436.59335,0.004917679
+B_Rep1,B. Escola Padrão,360,25,439.7954,0.0043522203
+B_Rep1,B. Escola Padrão,420,25,441.83612,0.004225174
+B_Rep2,B. Escola Padrão,0,1,400.0521,1.0416667e-05
+B_Rep2,B. Escola Padrão,60,17,436.9514,0.004194159
+B_Rep2,B. Escola Padrão,120,19,441.32925,0.004158949
+B_Rep2,B. Escola Padrão,180,22,441.0271,0.0041625346
+B_Rep2,B. Escola Padrão,240,23,440.69147,0.0041833124
+B_Rep2,B. Escola Padrão,300,23,436.64093,0.004073215
+B_Rep2,B. Escola Padrão,360,23,439.8472,0.004087938
+B_Rep2,B. Escola Padrão,420,23,441.54352,0.004147265
+B_Rep3,B. Escola Padrão,0,1,400.0521,1.0416667e-05
+B_Rep3,B. Escola Padrão,60,24,436.84735,0.0041461242
+B_Rep3,B. Escola Padrão,120,25,441.22717,0.0040815687
+B_Rep3,B. Escola Padrão,180,25,440.99506,0.0041997456
+B_Rep3,B. Escola Padrão,240,25,440.67682,0.018117985
+B_Rep3,B. Escola Padrão,300,25,436.63208,0.004832788
+B_Rep3,B. Escola Padrão,360,25,439.89185,0.0039877705
+B_Rep3,B. Escola Padrão,420,25,441.51862,0.0041534365
+B_Rep4,B. Escola Padrão,0,1,400.0521,1.0416667e-05
+B_Rep4,B. Escola Padrão,60,22,436.9193,0.004252119
+B_Rep4,B. Escola Padrão,120,23,441.4,0.0042201453
+B_Rep4,B. Escola Padrão,180,24,441.08008,0.0041501643
+B_Rep4,B. Escola Padrão,240,24,440.7467,0.018127361
+B_Rep4,B. Escola Padrão,300,25,436.52783,0.004971904
+B_Rep4,B. Escola Padrão,360,25,440.00427,0.0041816575
+B_Rep4,B. Escola Padrão,420,25,441.71008,0.004203313
+B_Rep5,B. Escola Padrão,0,1,400.0521,1.0416667e-05
+B_Rep5,B. Escola Padrão,60,21,436.90387,0.0042322734
+B_Rep5,B. Escola Padrão,120,23,441.26416,0.0042812084
+B_Rep5,B. Escola Padrão,180,24,441.0401,0.0041756923
+B_Rep5,B. Escola Padrão,240,25,440.66653,0.018129975
+B_Rep5,B. Escola Padrão,300,25,436.6422,0.005015965
+B_Rep5,B. Escola Padrão,360,25,439.798,0.004188641
+B_Rep5,B. Escola Padrão,420,25,441.53192,0.004154961
+C_Rep1,C. Ventilação Otimizada,0,1,400.0521,1.0416667e-05
+C_Rep1,C. Ventilação Otimizada,60,21,418.56693,0.0019332833
+C_Rep1,C. Ventilação Otimizada,120,21,419.15448,0.0018979874
+C_Rep1,C. Ventilação Otimizada,180,23,418.7279,0.0018935628
+C_Rep1,C. Ventilação Otimizada,240,23,418.72992,0.009248598
+C_Rep1,C. Ventilação Otimizada,300,25,417.63412,0.0019095667
+C_Rep1,C. Ventilação Otimizada,360,25,419.01413,0.0018749377
+C_Rep1,C. Ventilação Otimizada,420,25,418.9362,0.0018690481
+C_Rep2,C. Ventilação Otimizada,0,1,400.0521,1.0416667e-05
+C_Rep2,C. Ventilação Otimizada,60,20,418.5869,0.0018943982
+C_Rep2,C. Ventilação Otimizada,120,24,419.17703,0.0018510537
+C_Rep2,C. Ventilação Otimizada,180,25,418.7423,0.0018810201
+C_Rep2,C. Ventilação Otimizada,240,25,418.74673,0.0018832955
+C_Rep2,C. Ventilação Otimizada,300,25,417.65247,0.0019262303
+C_Rep2,C. Ventilação Otimizada,360,25,419.0353,0.0019369546
+C_Rep2,C. Ventilação Otimizada,420,25,418.93814,0.0018579566
+C_Rep3,C. Ventilação Otimizada,0,1,400.0521,1.0416667e-05
+C_Rep3,C. Ventilação Otimizada,60,16,418.57446,0.0019045952
+C_Rep3,C. Ventilação Otimizada,120,18,419.1922,0.0017824045
+C_Rep3,C. Ventilação Otimizada,180,18,418.73178,0.001863521
+C_Rep3,C. Ventilação Otimizada,240,19,418.74243,0.0018705176
+C_Rep3,C. Ventilação Otimizada,300,23,417.68408,0.0018356591
+C_Rep3,C. Ventilação Otimizada,360,23,419.03564,0.0018637754
+C_Rep3,C. Ventilação Otimizada,420,23,418.96863,0.0018565562
+C_Rep4,C. Ventilação Otimizada,0,1,400.0521,1.0416667e-05
+C_Rep4,C. Ventilação Otimizada,60,25,418.57516,0.001897557
+C_Rep4,C. Ventilação Otimizada,120,25,419.17612,0.0017921347
+C_Rep4,C. Ventilação Otimizada,180,25,418.72928,0.0018678419
+C_Rep4,C. Ventilação Otimizada,240,25,418.73572,0.009248837
+C_Rep4,C. Ventilação Otimizada,300,25,417.62506,0.0018839923
+C_Rep4,C. Ventilação Otimizada,360,25,418.9806,0.0018911343
+C_Rep4,C. Ventilação Otimizada,420,25,418.9229,0.0018847879
+C_Rep5,C. Ventilação Otimizada,0,1,400.0521,1.0416667e-05
+C_Rep5,C. Ventilação Otimizada,60,24,418.58182,0.0019054906
+C_Rep5,C. Ventilação Otimizada,120,25,419.20853,0.0017886624
+C_Rep5,C. Ventilação Otimizada,180,25,418.73438,0.0018637709
+C_Rep5,C. Ventilação Otimizada,240,25,418.73077,0.009249916
+C_Rep5,C. Ventilação Otimizada,300,25,417.757,0.0017345905
+C_Rep5,C. Ventilação Otimizada,360,25,418.96655,0.0018243544
+C_Rep5,C. Ventilação Otimizada,420,25,418.91574,0.001862779
+D_Rep1,D. Superlotação,0,1,400.08334,1.0416667e-05
+D_Rep1,D. Superlotação,60,24,457.5613,0.004000391
+D_Rep1,D. Superlotação,120,31,465.8755,0.0040523033
+D_Rep1,D. Superlotação,180,34,465.31177,0.0041283974
+D_Rep1,D. Superlotação,240,37,464.78027,0.018114893
+D_Rep1,D. Superlotação,300,40,458.9494,0.005213696
+D_Rep1,D. Superlotação,360,40,464.13712,0.0041954503
+D_Rep1,D. Superlotação,420,40,466.73572,0.0041174553
+D_Rep2,D. Superlotação,0,1,400.08334,1.0416667e-05
+D_Rep2,D. Superlotação,60,35,457.5042,0.004131165
+D_Rep2,D. Superlotação,120,40,465.88995,0.0042967508
+D_Rep2,D. Superlotação,180,40,465.24945,0.004154439
+D_Rep2,D. Superlotação,240,40,464.7378,0.018136336
+D_Rep2,D. Superlotação,300,40,458.87213,0.0049808035
+D_Rep2,D. Superlotação,360,40,464.19604,0.0040803575
+D_Rep2,D. Superlotação,420,40,466.57712,0.004271877
+D_Rep3,D. Superlotação,0,1,400.08334,1.0416667e-05
+D_Rep3,D. Superlotação,60,17,457.55695,0.0043916213
+D_Rep3,D. Superlotação,120,21,465.8069,0.004251293
+D_Rep3,D. Superlotação,180,22,465.2119,0.0041779634
+D_Rep3,D. Superlotação,240,24,464.77008,0.018087775
+D_Rep3,D. Superlotação,300,37,459.04333,0.0052923793
+D_Rep3,D. Superlotação,360,38,464.42703,0.00409274
+D_Rep3,D. Superlotação,420,39,466.49454,0.004102669
+D_Rep4,D. Superlotação,0,1,400.08334,1.0416667e-05
+D_Rep4,D. Superlotação,60,30,457.54254,0.004184761
+D_Rep4,D. Superlotação,120,33,465.88818,0.004428044
+D_Rep4,D. Superlotação,180,33,465.24933,0.0042451993
+D_Rep4,D. Superlotação,240,34,464.72156,0.01810138
+D_Rep4,D. Superlotação,300,39,458.58618,0.0047317417
+D_Rep4,D. Superlotação,360,39,463.99918,0.0037430527
+D_Rep4,D. Superlotação,420,39,466.13638,0.004133485
+D_Rep5,D. Superlotação,0,1,400.08334,1.0416667e-05
+D_Rep5,D. Superlotação,60,28,457.54156,0.004041532
+D_Rep5,D. Superlotação,120,30,465.8702,0.0039705597
+D_Rep5,D. Superlotação,180,34,465.2625,0.0041051214
+D_Rep5,D. Superlotação,240,36,464.70038,0.018099863
+D_Rep5,D. Superlotação,300,38,458.7992,0.0049361265
+D_Rep5,D. Superlotação,360,40,464.0,0.004265817
+D_Rep5,D. Superlotação,420,40,465.99973,0.0041313386

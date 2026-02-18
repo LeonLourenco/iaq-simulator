@@ -1,23 +1,33 @@
-# Python artifacts
+# --- Python ---
+# Arquivos de bytecode compilado (gerados automaticamente)
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
+*.py[cod]
+*$py.class
+
+# --- Ambientes Virtuais ---
+# Ignora pastas de ambientes virtuais locais
 venv/
+env/
 .env
 
-# Test artifacts
-.tox/
-.coverage
-htmlcov/
-.pytest_cache/
-
-# Simulation results
-logs/
-*.log
-
-# IDEs
+# --- IDEs e Sistema Operacional ---
+# Configurações do VS Code, PyCharm e Mac/Windows
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
+
+# --- Arquivos de Saída da Simulação ---
+# Não queremos versionar arquivos gerados que são pesados ou mudam sempre
+*.mp4
+*.avi
+*.npz
+*.csv
+simulation_result.npz
+
+# Exceção: Mantém a pasta results, mas ignora o conteúdo
+results/*
+!results/.gitkeep
+!results/dados_estatisticos_finais.csv
+!results/dados_monte_carlo_raw.csv
+!results/dados_series_temporais.csv

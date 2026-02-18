@@ -1,0 +1,7 @@
+,Taxa_Ataque,Taxa_Ataque,Taxa_Ataque,Taxa_Ataque,Pico_Viral,Pico_Viral,Dose_Index,Dose_Index,CO2_Final,Tempo_Calc_s
+,mean,std,min,max,mean,std,mean,std,mean,sum
+Cenário,,,,,,,,,,
+A. Hermético (Controle),99.17,1.86,95.83,100.0,14.44,6.44,34.77,6.39,740.69,103.26
+B. Escola Padrão,99.17,1.86,95.83,100.0,9.94,4.43,2.59,0.36,440.82,92.7
+C. Ventilação Otimizada,98.33,3.73,91.67,100.0,7.59,5.01,1.1,0.2,418.79,97.96
+D. Superlotação,99.49,1.15,97.44,100.0,12.46,2.38,2.73,0.02,465.19,190.75

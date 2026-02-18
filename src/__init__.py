@@ -1,42 +1,26 @@
 """
-Pacote principal do Simulador IAQ (Indoor Air Quality).
+IAQ Simulator - Core Package
+============================
 
-Este pacote contém os módulos essenciais para a simulação epidemiológica baseada em agentes
-acoplada à dinâmica de fluidos computacional (ABM + CFD).
+Este pacote contém o motor matemático e lógico da simulação híbrida (LBM + ABM).
 
-Módulos:
-    - config: Definições de cenários e parâmetros científicos.
-    - model: Orquestrador da simulação (IAQModel).
-    - agents: Lógica comportamental e infecciosa dos ocupantes.
-    - physics: Motor de transporte de aerossóis (Advecção-Difusão).
-    - environment: Fachada para geometria e obstáculos.
+Estrutura do Pacote:
+--------------------
+- simulation_engine: Orquestrador da simulação, gerencia o loop de tempo e a integração entre física e agentes.
+- lbm_core: Núcleo numérico de alta performance para Dinâmica dos Fluidos Computacional (Método Lattice Boltzmann).
+- agents: Modelagem dos indivíduos, contendo a lógica comportamental e o modelo epidemiológico (SEIR).
+
+Como importar:
+--------------
+A partir da raiz do projeto:
+    from src.simulation_engine import IAQSimulator
+
 """
 
-# Expõe as classes principais para acesso direto
-from .config import (
-    ScenarioConfig, 
-    AgentsConfig, 
-    PhysicsConfig,
-    create_school_scenario,
-    create_office_scenario,
-    create_gym_scenario
-)
+# Metadados do Projeto
+__version__ = '4.0.0'
+__author__ = 'Leon Lourenço (UFRPE)'
+__license__ = 'MIT'
 
-from .model import IAQModel
-from .agents import HumanAgent
-from .physics import PhysicsEngine
-from .environment import Environment
-
-__all__ = [
-    "IAQModel",
-    "HumanAgent",
-    "PhysicsEngine",
-    "Environment",
-    "ScenarioConfig",
-    "create_school_scenario",
-    "create_office_scenario", 
-    "create_gym_scenario"
-]
-
-__version__ = "1.0.0"
-__author__ = "Leon Lourenço da Silva Santos"
+# Lista de módulos exportados (para 'from src import *')
+__all__ = ['simulation_engine', 'lbm_core', 'agents']
