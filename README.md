@@ -65,6 +65,15 @@ iaq-simulator/
 | `scenarios/school.json` | Parâmetros base da sala (dimensões, ACH padrão, número de alunos, infectados iniciais) |
 
 ---
+### Acesso Online (Visualização Rápida)
+
+Para uma visualização imediata do dashboard interativo, sem necessidade de instalação local, o simulador está disponível via **Streamlit Cloud**:
+
+🔗 https://iaq-simulator.streamlit.app/
+
+> Esta versão permite explorar os mapas de calor, curvas epidemiológicas e controles de cenário diretamente no navegador, sendo indicada para demonstrações, validação conceitual e inspeção qualitativa dos resultados.
+
+---
 
 ## Instalação
 
